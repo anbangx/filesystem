@@ -1,0 +1,27 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# executable files
+lock_demo
+lock_server
+lock_tester
+rpctest
+extent_server
+yfs_client
+
+# dependencies files
+*.d
+
+# others
+*.log
+
