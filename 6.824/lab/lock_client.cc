@@ -27,24 +27,28 @@ lock_client::stat(lock_protocol::lockid_t lid)
   return r;
 }
 
-int
+lock_protocol::status
 lock_client::acquire(lock_protocol::lockid_t lid)
 {
-  printf("client acquire\n");
   int r;
-  lock_protocol::status ret;
-  printf("client try\n");
-  ret = cl->call(lock_protocol::acquire, cl->id(), lid, r);
-
-//  while(ret != lock_protocol::OK){
-//    printf("client try\n");
-//    ret = cl->call(lock_protocol::stat, cl->id(), lid, r);
-//  }
-  VERIFY (ret == lock_protocol::OK);
-  return r;
+    lock_protocol::status ret = cl->call(lock_protocol::stat, cl->id(), lid, r);
+    VERIFY (ret == lock_protocol::OK);
+    return r;
+//  printf("client acquire\n");
+//  int r;
+//  lock_protocol::status ret;
+//  printf("client try\n");
+//  ret = cl->call(lock_protocol::acquire, cl->id(), lid, r);
+//
+////  while(ret != lock_protocol::OK){
+////    printf("client try\n");
+////    ret = cl->call(lock_protocol::stat, cl->id(), lid, r);
+////  }
+//  VERIFY (ret == lock_protocol::OK);
+//  return r;
 }
 
-int
+lock_protocol::status
 lock_client::release(lock_protocol::lockid_t lid)
 {
   int r;
