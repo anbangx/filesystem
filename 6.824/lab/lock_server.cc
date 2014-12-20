@@ -13,7 +13,8 @@ lock_server::lock_server():
   pthread_mutex_init(&mutex, NULL);
 }
 
-lock_server::~lock_server(){
+lock_server::~lock_server()
+{
   pthread_mutex_destroy(&mutex);
 }
 
