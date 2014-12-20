@@ -30,7 +30,6 @@ lock_client::stat(lock_protocol::lockid_t lid)
 lock_protocol::status
 lock_client::acquire(lock_protocol::lockid_t lid)
 {
-  printf("client acquire %d\n", lid);
   int r;
   lock_protocol::status ret = lock_protocol::RETRY;
   while(ret != lock_protocol::OK){
@@ -43,7 +42,6 @@ lock_client::acquire(lock_protocol::lockid_t lid)
 lock_protocol::status
 lock_client::release(lock_protocol::lockid_t lid)
 {
-  printf("client release %d\n", lid);
   int r;
   lock_protocol::status ret = cl->call(lock_protocol::release, cl->id(), lid, r);
   VERIFY (ret == lock_protocol::OK);
