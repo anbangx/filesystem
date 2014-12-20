@@ -10,14 +10,14 @@
 #include "rpc.h"
 
 class lock_server {
-// public:
-//  enum lock_state {
-//    free,
-//    locked
-//  };
+ public:
+  enum lock_state {
+    free,
+    locked
+  };
  protected:
   int nacquire;
-//  std::map<lock_protocol::lockid_t, lock_state> lock_map;
+  std::map<lock_protocol::lockid_t, lock_state> lock_map;
 
  public:
   lock_server();
