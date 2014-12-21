@@ -24,4 +24,5 @@ yfs_client
 
 # others
 *.log
-
+*.cproject
+*.swp
