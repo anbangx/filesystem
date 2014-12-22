@@ -44,7 +44,8 @@ class yfs_client {
   int getfile(inum, fileinfo &);
   int getdir(inum, dirinfo &);
 
-  int createfile(inum p_inum, const char *name, inum &c_num, bool isfile);
+  int createfile(inum p_inum, const char *name, inum &c_inum, bool isfile);
+  int lookup(inum p_inum, const char *name, inum &c_inum);
 
   inum new_inum(bool isfile);
 };

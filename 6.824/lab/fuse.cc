@@ -284,6 +284,13 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   bool found = false;
 
   // You fill this in for Lab 2
+  yfs_client::status ret;
+  yfs_client::inum p_inum = parent;
+  yfs_client::inum c_inum;
+
+  printf("fuseserver_lookup parent:%016lx name:%s\n", parent, name);
+  ret = yfs->lookup(p_inum, name, c_inum);
+
   if (found)
     fuse_reply_entry(req, &e);
   else

@@ -14,7 +14,6 @@
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-
 }
 
 yfs_client::inum
@@ -112,7 +111,48 @@ yfs_client::new_inum(bool isfile)
 }
 
 int
-yfs_client::createfile(inum p_inum, const char *name, inum &c_num, bool isfile)
+yfs_client::lookup(inum p_inum, const char *name, inum &c_inum){
+  int r = OK;
+  std::string p_buf, inum_buf;
+  char *cstr, *p;
+  int count = 0;
+  inum curr_inum;
+  // Read Parent Dir and check if name already exists
+  if (ec->get(p_inum, -1, 0, p_buf) != extent_protocol::OK) {
+     printf("yfs_client::createfile %016llx parent dir not exist\n", p_inum);
+     r = NOENT;
+     goto release;
+  }
+
+  cstr = new char[p_buf.size() + 1];
+  strcpy(cstr, p_buf.c_str());
+  p = strtok (cstr, "/");
+  while (p != NULL) {
+    printf("createfile: p %c\n", *p);
+    // Skip its own dir name & inum
+    if(count != 1 && count % 2 == 1) {
+       if((strlen(p) == strlen(name)) && (!strncmp(p, name, strlen(name)))) {
+         delete[] cstr;
+         r = EXIST;
+         c_inum = curr_inum;
+         goto release;
+      }
+    } else{
+      inum_buf = p;
+      curr_inum = n2i(inum_buf);
+    }
+    p = strtok(NULL,"/");
+    count++;
+  }
+
+  delete[] cstr;
+  r = NOENT;
+  release:
+  return r;
+}
+
+int
+yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
 {
   int r = OK;
   std::string p_buf;
@@ -127,9 +167,9 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_num, bool isfile)
      goto release;
   }
 
-  cstr = new char[p_buf.size()+1];
+  cstr = new char[p_buf.size() + 1];
   strcpy(cstr, p_buf.c_str());
-  p=strtok (cstr, "/");
+  p = strtok (cstr, "/");
   while (p != NULL) {
     printf("createfile: p %c\n", *p);
     // Skip its own dir name & inum
@@ -140,25 +180,25 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_num, bool isfile)
          goto release;
       }
     }
-    p=strtok(NULL,"/");
+    p = strtok(NULL,"/");
     count++;
   }
 
   delete[] cstr;
   if(!isfile)
-     file_buf.append('/'+filename(file_inum)+"/"+name);
+    file_buf.append('/' + filename(file_inum) + "/" + name);
   //Create an empty extent for ino
   if (ec->put(file_inum, -1, file_buf) != extent_protocol::OK) {
      r = IOERR;
      goto release;
   }
   //Add a <name, ino> entry into @parent
-  p_buf.append('/'+filename(file_inum)+"/"+name);
+  p_buf.append('/' + filename(file_inum) + "/" + name);
   if (ec->put(p_inum,-1, p_buf) != extent_protocol::OK) {
     r = IOERR;
     goto release;
   }
-  c_num = file_inum;
+  c_inum = file_inum;
   release:
   printf("release");
   return r;
