@@ -340,7 +340,9 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 {
   yfs_client::inum inum = ino; // req->in.h.nodeid;
   struct dirbuf b;
-
+  std::vector<yfs_client::dirent> r_dirent;
+  std::vector<yfs_client::dirent>::iterator it;
+  yfs_client::status ret;
   printf("fuseserver_readdir\n");
 
   if(!yfs->isdir(inum)){
@@ -350,9 +352,13 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 
   memset(&b, 0, sizeof(b));
 
-
   // You fill this in for Lab 2
-
+  ret = yfs->readdir(inum, r_dirent);
+  if (ret == yfs_client::OK) {
+    for(it = r_dirent.begin();it < r_dirent.end(); it++) {
+      dirbuf_add(&b, it->name.c_str(), it->inum);
+    }
+  }
 
   reply_buf_limited(req, b.p, b.size, off, size);
   free(b.p);

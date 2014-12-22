@@ -204,5 +204,44 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
   return r;
 }
 
+int
+yfs_client::readdir(inum p_inum, std::vector<dirent> &r_dirent){
+  int r = OK;
+  std::string p_buf, inum_buf;
+  char *cstr, *p;
+  int count = 0;
+  dirent curr_dirent;
+  // Read Parent Dir and check if name already exists
+  if (ec->get(p_inum, -1, 0, p_buf) != extent_protocol::OK) {
+     printf("yfs_client::createfile %016llx parent dir not exist\n", p_inum);
+     r = NOENT;
+     goto release;
+  }
+
+  cstr = new char[p_buf.size() + 1];
+  strcpy(cstr, p_buf.c_str());
+  p = strtok (cstr, "/");
+  while (p != NULL) {
+    printf("createfile: p %c\n", *p);
+    // Skip its own dir name & inum
+    if(count && count!=1) {
+      if(count % 2 == 1) { // name
+        curr_dirent.name = p;
+        r_dirent.push_back(curr_dirent);
+      }
+      else { // ino
+        inum_buf = p;
+        curr_dirent.inum = n2i(inum_buf);
+      }
+    }
+    p = strtok(NULL,"/");
+    count++;
+  }
+
+  delete[] cstr;
+  r = OK;
+  release:
+  return r;
+}
 
 

@@ -46,6 +46,7 @@ class yfs_client {
 
   int createfile(inum p_inum, const char *name, inum &c_inum, bool isfile);
   int lookup(inum p_inum, const char *name, inum &c_inum);
+  int readdir(inum p_inum, std::vector<dirent> &r_dirent);
 
   inum new_inum(bool isfile);
 };
