@@ -20,7 +20,7 @@ extent_client::extent_client(std::string dst)
 }
 
 extent_protocol::status
-extent_client::get(extent_protocol::extentid_t eid, std::string &buf)
+extent_client::get(extent_protocol::extentid_t eid, int off, unsigned int size, std::string &buf)
 {
   extent_protocol::status ret = extent_protocol::OK;
   ret = cl->call(extent_protocol::get, eid, buf);
@@ -37,7 +37,7 @@ extent_client::getattr(extent_protocol::extentid_t eid,
 }
 
 extent_protocol::status
-extent_client::put(extent_protocol::extentid_t eid, std::string buf)
+extent_client::put(extent_protocol::extentid_t eid, int off, std::string buf)
 {
   extent_protocol::status ret = extent_protocol::OK;
   int r;

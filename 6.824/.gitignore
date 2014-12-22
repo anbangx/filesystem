@@ -26,3 +26,4 @@ yfs_client
 *.log
 *.cproject
 *.swp
+core
