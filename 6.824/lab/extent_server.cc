@@ -21,8 +21,15 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 {
   // You fill this in for Lab 2.
-  buf = extent_store[id]->data;
-  return extent_protocol::OK;
+  printf("Extent_Server::get - key %d enter\n", id);
+  if(extent_store.find(id) != extent_store.end()){
+    buf = extent_store[id]->data;
+    printf("Extent_Server::get - key %d, get value: %s\n", id, buf.c_str());
+    return extent_protocol::OK;
+  } else{
+    printf("Extent_Server::get - key %d, value is empty.", id);
+    return extent_protocol::NOENT;
+  }
 }
 
 int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr &a)

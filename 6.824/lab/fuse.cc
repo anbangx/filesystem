@@ -290,6 +290,13 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 
   printf("fuseserver_lookup parent:%016lx name:%s\n", parent, name);
   ret = yfs->lookup(p_inum, name, c_inum);
+  if (ret == yfs_client::OK) {
+    struct stat st;
+    e.ino = c_inum;
+    if(getattr(c_inum, st) == yfs_client::OK)
+      e.attr = st;
+    found = true;
+  }
 
   if (found)
     fuse_reply_entry(req, &e);
@@ -352,13 +359,13 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 
   memset(&b, 0, sizeof(b));
 
-  // You fill this in for Lab 2
-  ret = yfs->readdir(inum, r_dirent);
-  if (ret == yfs_client::OK) {
-    for(it = r_dirent.begin();it < r_dirent.end(); it++) {
-      dirbuf_add(&b, it->name.c_str(), it->inum);
-    }
-  }
+//  // You fill this in for Lab 2
+//  ret = yfs->readdir(inum, r_dirent);
+//  if (ret == yfs_client::OK) {
+//    for(it = r_dirent.begin();it < r_dirent.end(); it++) {
+//      dirbuf_add(&b, it->name.c_str(), it->inum);
+//    }
+//  }
 
   reply_buf_limited(req, b.p, b.size, off, size);
   free(b.p);

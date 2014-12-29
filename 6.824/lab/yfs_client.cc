@@ -112,7 +112,7 @@ yfs_client::new_inum(bool isfile)
 
 int
 yfs_client::lookup(inum p_inum, const char *name, inum &c_inum){
-  int r = OK;
+  int r = NOENT;
   std::string p_buf, inum_buf;
   char *cstr, *p;
   int count = 0;
@@ -123,7 +123,7 @@ yfs_client::lookup(inum p_inum, const char *name, inum &c_inum){
      r = NOENT;
      goto release;
   }
-
+  printf("p_buf.size(): " + p_buf.size());
   cstr = new char[p_buf.size() + 1];
   strcpy(cstr, p_buf.c_str());
   p = strtok (cstr, "/");
@@ -145,9 +145,10 @@ yfs_client::lookup(inum p_inum, const char *name, inum &c_inum){
     count++;
   }
 
-  delete[] cstr;
+//  delete[] cstr;
   r = NOENT;
   release:
+  printf("release");
   return r;
 }
 
