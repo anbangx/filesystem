@@ -15,10 +15,12 @@ my $seq = 0;
 my $files = { };
 my @dead;
 
+# 200
 for(my $iters = 0; $iters < 200; $iters++){
     createone();
 }
 
+# 100
 for(my $iters = 0; $iters < 100; $iters++){
     if(rand() < 0.1){
         livecheck();

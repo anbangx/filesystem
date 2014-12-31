@@ -225,8 +225,9 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   yfs_client::inum p_inum = parent;
   yfs_client::inum c_inum;
 
-  printf("createhelper parent %016lx name %s\n", parent, name);
+  printf("fuseserver_createhelper parent %016lx name %s\n", parent, name);
   ret = yfs->createfile(p_inum, name, c_inum, true);
+  printf("fuseserver_createhelper ret: %d", ret);
   if (ret == yfs_client::OK) {
      struct stat st;
      e->ino = c_inum;
@@ -350,7 +351,7 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
   std::vector<yfs_client::dirent> r_dirent;
   std::vector<yfs_client::dirent>::iterator it;
   yfs_client::status ret;
-  printf("fuseserver_readdir\n");
+  printf("fuseserver_readdir, dir ino: %d\n", ino);
 
   if(!yfs->isdir(inum)){
     fuse_reply_err(req, ENOTDIR);
@@ -359,13 +360,13 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 
   memset(&b, 0, sizeof(b));
 
-//  // You fill this in for Lab 2
-//  ret = yfs->readdir(inum, r_dirent);
-//  if (ret == yfs_client::OK) {
-//    for(it = r_dirent.begin();it < r_dirent.end(); it++) {
-//      dirbuf_add(&b, it->name.c_str(), it->inum);
-//    }
-//  }
+  // You fill this in for Lab 2
+  ret = yfs->readdir(inum, r_dirent);
+  if (ret == yfs_client::OK) {
+    for(it = r_dirent.begin();it < r_dirent.end(); it++) {
+      dirbuf_add(&b, it->name.c_str(), it->inum);
+    }
+  }
 
   reply_buf_limited(req, b.p, b.size, off, size);
   free(b.p);

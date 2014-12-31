@@ -8,13 +8,19 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-extent_server::extent_server() {}
+extent_server::extent_server()
+{
+}
 
 
 int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 {
   // You fill this in for Lab 2.
-  extent_store[id]->data = buf;
+  printf("Extent_Server::put - key %d enter, buf: %s\n", id, buf.c_str());
+  extent_value *p = new extent_value();
+  p->data = buf;
+  extent_store[id] = p;
+  printf("Extent_Server::put - key %d enter, extent_store[id]->data: %s\n", id, extent_store[id]->data.c_str());
   return extent_protocol::OK;
 }
 
@@ -27,7 +33,7 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
     printf("Extent_Server::get - key %d, get value: %s\n", id, buf.c_str());
     return extent_protocol::OK;
   } else{
-    printf("Extent_Server::get - key %d, value is empty.", id);
+    printf("Extent_Server::get - key %d, value is empty.\n", id);
     return extent_protocol::NOENT;
   }
 }

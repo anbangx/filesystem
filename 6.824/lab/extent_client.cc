@@ -22,10 +22,10 @@ extent_client::extent_client(std::string dst)
 extent_protocol::status
 extent_client::get(extent_protocol::extentid_t eid, int off, unsigned int size, std::string &buf)
 {
-  printf("extent_client::get\n");
+  printf("Extent_Client::get - key %d enter\n", eid);
   extent_protocol::status ret = extent_protocol::OK;
   ret = cl->call(extent_protocol::get, eid, buf);
-  printf("extent_client::get ret\n");
+  printf("Extent_Client::get - key %d, buf: %s\n", eid, buf.c_str());
   return ret;
 }
 
@@ -41,6 +41,7 @@ extent_client::getattr(extent_protocol::extentid_t eid,
 extent_protocol::status
 extent_client::put(extent_protocol::extentid_t eid, int off, std::string buf)
 {
+  printf("Extent_Client::put - key %d enter, buf: %s\n", eid, buf.c_str());
   extent_protocol::status ret = extent_protocol::OK;
   int r;
   ret = cl->call(extent_protocol::put, eid, buf, r);
