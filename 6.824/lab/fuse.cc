@@ -227,7 +227,7 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 
   printf("fuseserver_createhelper parent %016lx name %s\n", parent, name);
   ret = yfs->createfile(p_inum, name, c_inum, true);
-  printf("fuseserver_createhelper ret: %d", ret);
+  printf("fuseserver_createhelper ret: %d\n", ret);
   if (ret == yfs_client::OK) {
      struct stat st;
      e->ino = c_inum;

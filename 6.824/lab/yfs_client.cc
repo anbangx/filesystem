@@ -148,7 +148,6 @@ yfs_client::lookup(inum p_inum, const char *name, inum &c_inum){
 //  delete[] cstr;
   r = NOENT;
   release:
-  printf("YFS_Client::lookup release\n");
   return r;
 }
 
@@ -181,6 +180,7 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
      r = NOENT;
      goto release;
   }
+  printf("YFS_Client::createfile %016llx parent dir return succeeds, p_buf: %s\n", p_inum, p_buf.c_str());
 
   cstr = new char[p_buf.size() + 1];
   strcpy(cstr, p_buf.c_str());
@@ -216,7 +216,6 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
   }
   c_inum = file_inum;
   release:
-  printf("YFS_Client::createfile release");
   return r;
 }
 
@@ -266,7 +265,6 @@ yfs_client::readdir(inum p_inum, std::vector<dirent> &r_dirent){
   r = OK;
   printdirent(r_dirent);
   release:
-  printf("YFS_Client::readdir release");
   return r;
 }
 
