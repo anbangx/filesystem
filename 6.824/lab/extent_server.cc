@@ -54,8 +54,14 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 int extent_server::setattr(extent_protocol::extentid_t id, extent_protocol::attr a, bool sizeChanged)
 {
   extent_value *p = new extent_value();
+  int oldSize = p->ext_attr.size;
   p->ext_attr = a;
   extent_store[id] = p;
+  if(sizeChanged && oldSize < a.size){
+    std:string data = p->data;
+    for(int i = oldSize; i < a.size; i++)
+      data[i] = '\0';
+  }
   return extent_protocol::OK;
 }
 
