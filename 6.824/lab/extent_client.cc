@@ -30,11 +30,18 @@ extent_client::get(extent_protocol::extentid_t eid, int off, unsigned int size, 
 }
 
 extent_protocol::status
-extent_client::getattr(extent_protocol::extentid_t eid, 
-		       extent_protocol::attr &attr)
+extent_client::getattr(extent_protocol::extentid_t eid, extent_protocol::attr &attr)
 {
   extent_protocol::status ret = extent_protocol::OK;
   ret = cl->call(extent_protocol::getattr, eid, attr);
+  return ret;
+}
+
+extent_protocol::status
+extent_client::setattr(extent_protocol::extentid_t eid, yfs_client::fileinfo attr, bool sizeChange)
+{
+  extent_protocol::status ret = extent_protocol::OK;
+  ret = cl->call(extent_protocol::setattr, eid, attr, sizeChange);
   return ret;
 }
 

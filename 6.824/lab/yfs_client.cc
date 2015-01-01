@@ -226,6 +226,23 @@ void yfs_client::printdirent(std::vector<dirent> r_dirent){
 }
 
 int
+yfs_client::setattr(yfs_client::inum inum, struct stat *st, bool sizeChanged)
+{
+  int r = OK;
+  yfs_client::fileinfo attr;
+  attr.atime = st->st_atim;
+  attr.ctime = st->st_ctim;
+  attr.mtime = st->st_mtim;
+  attr.size = st->st_size;
+  if (ec->setattr(inum, attr, sizeChanged) != extent_protocol::OK) {
+    r = NOENT;
+    goto release;
+  }
+  release:
+  return r;
+}
+
+int
 yfs_client::readdir(inum p_inum, std::vector<dirent> &r_dirent){
   int r = OK;
   std::string p_buf, inum_buf;
@@ -267,5 +284,4 @@ yfs_client::readdir(inum p_inum, std::vector<dirent> &r_dirent){
   release:
   return r;
 }
-
 

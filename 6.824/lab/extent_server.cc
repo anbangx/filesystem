@@ -51,6 +51,14 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
   return extent_protocol::OK;
 }
 
+int extent_server::setattr(extent_protocol::extentid_t id, extent_protocol::attr a, bool sizeChanged)
+{
+  extent_value *p = new extent_value();
+  p->ext_attr = a;
+  extent_store[id] = p;
+  return extent_protocol::OK;
+}
+
 int extent_server::remove(extent_protocol::extentid_t id, int &)
 {
   // You fill this in for Lab 2.

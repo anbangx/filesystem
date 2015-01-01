@@ -51,6 +51,8 @@ class yfs_client {
   void printdirent(std::vector<dirent> r_dirent);
 
   inum new_inum(bool isfile);
+
+  int setattr(inum inum, struct stat *st, bool sizeChanged);
 };
 
 #endif 
