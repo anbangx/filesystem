@@ -37,14 +37,6 @@ extent_client::getattr(extent_protocol::extentid_t eid, extent_protocol::attr &a
   return ret;
 }
 
-//extent_protocol::status
-//extent_client::setattr(extent_protocol::extentid_t eid, int size)
-//{
-//  extent_protocol::status ret = extent_protocol::OK;
-//  ret = cl->call(extent_protocol::setattr, eid, size);
-//  return ret;
-//}
-
 extent_protocol::status
 extent_client::put(extent_protocol::extentid_t eid, int offset, std::string buf)
 {

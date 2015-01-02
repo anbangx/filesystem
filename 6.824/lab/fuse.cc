@@ -45,7 +45,7 @@ getattr(yfs_client::inum inum, struct stat &st)
   bzero(&st, sizeof(st));
 
   st.st_ino = inum;
-  printf("getattr %016llx %d\n", inum, yfs->isfile(inum));
+//  printf("getattr %016llx %d\n", inum, yfs->isfile(inum));
   if(yfs->isfile(inum)){
      yfs_client::fileinfo info;
      ret = yfs->getfile(inum, info);
@@ -57,7 +57,7 @@ getattr(yfs_client::inum inum, struct stat &st)
      st.st_mtime = info.mtime;
      st.st_ctime = info.ctime;
      st.st_size = info.size;
-     printf("   getattr -> %llu\n", info.size);
+//     printf("   getattr -> %llu\n", info.size);
    } else {
      yfs_client::dirinfo info;
      ret = yfs->getdir(inum, info);
@@ -68,7 +68,7 @@ getattr(yfs_client::inum inum, struct stat &st)
      st.st_atime = info.atime;
      st.st_mtime = info.mtime;
      st.st_ctime = info.ctime;
-     printf("   getattr -> %lu %lu %lu\n", info.atime, info.mtime, info.ctime);
+//     printf("   getattr -> %lu %lu %lu\n", info.atime, info.mtime, info.ctime);
    }
    return yfs_client::OK;
 }
@@ -167,11 +167,13 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 #if 1
   std::string buf;
   yfs_client::inum inum = ino;
+  printf("fuseserver_read ino %016lx offset %d size %d\n", ino, off, size);
   yfs_client::status ret = yfs->read(inum, off, size, buf);
   if(ret != yfs_client::OK){
     fuse_reply_err(req, ENOENT);
     return;
   }
+  printf("fuseserver_read ino %016lx read data %s\n", ino, buf.c_str());
   // Change the above "#if 0" to "#if 1", and your code goes here
   fuse_reply_buf(req, buf.data(), buf.size());
 #else
@@ -202,12 +204,14 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
   // You fill this in for Lab 2
 #if 1
   // Change the above line to "#if 1", and your code goes here
+  printf("fuseserver_write ino %016lx offset %d size %d writeBuf %s\n", ino, off, size, buf);
   yfs_client::inum inum = ino;
   yfs_client::status ret = yfs->write(inum, off, size, buf);
   if(ret != yfs_client::OK){
     fuse_reply_err(req, ENOENT);
     return;
   }
+  printf("fuseserver_write succeeds");
   fuse_reply_write(req, size);
 #else
   fuse_reply_err(req, ENOSYS);
@@ -319,7 +323,7 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
       e.attr = st;
     found = true;
   }
-
+  printf("fuseserver_lookup found %s", found ? "true" : "false");
   if (found)
     fuse_reply_entry(req, &e);
   else
