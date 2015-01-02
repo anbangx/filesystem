@@ -20,11 +20,11 @@ extent_client::extent_client(std::string dst)
 }
 
 extent_protocol::status
-extent_client::get(extent_protocol::extentid_t eid, int offet, unsigned int size, std::string &buf)
+extent_client::get(extent_protocol::extentid_t eid, int offset, unsigned int size, std::string &buf)
 {
   printf("Extent_Client::get - key %d enter\n", eid);
   extent_protocol::status ret = extent_protocol::OK;
-  ret = cl->call(extent_protocol::get, eid, buf);
+  ret = cl->call(extent_protocol::get, eid, offset, size, buf);
   printf("Extent_Client::get - key %d, buf: %s\n", eid, buf.c_str());
   return ret;
 }
@@ -37,21 +37,21 @@ extent_client::getattr(extent_protocol::extentid_t eid, extent_protocol::attr &a
   return ret;
 }
 
-extent_protocol::status
-extent_client::setattr(extent_protocol::extentid_t eid, int size)
-{
-  extent_protocol::status ret = extent_protocol::OK;
-  ret = cl->call(extent_protocol::setattr, eid, size);
-  return ret;
-}
+//extent_protocol::status
+//extent_client::setattr(extent_protocol::extentid_t eid, int size)
+//{
+//  extent_protocol::status ret = extent_protocol::OK;
+//  ret = cl->call(extent_protocol::setattr, eid, size);
+//  return ret;
+//}
 
 extent_protocol::status
-extent_client::put(extent_protocol::extentid_t eid, int offset, unsigned int size, std::string buf)
+extent_client::put(extent_protocol::extentid_t eid, int offset, std::string buf)
 {
   printf("Extent_Client::put - key %d enter, buf: %s\n", eid, buf.c_str());
   extent_protocol::status ret = extent_protocol::OK;
   int r;
-  ret = cl->call(extent_protocol::put, eid, buf, r);
+  ret = cl->call(extent_protocol::put, eid, offset, buf, r);
   return ret;
 }
 

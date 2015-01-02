@@ -12,8 +12,7 @@ extent_server::extent_server()
 {
 }
 
-
-int extent_server::put(extent_protocol::extentid_t id, int offset, unsigned int size, std::string &buf)
+int extent_server::put(extent_protocol::extentid_t id, int offset, std::string buf, int &r)
 {
   // You fill this in for Lab 2.
   printf("Extent_Server::put - key %llu enter, buf: %s\n", id, buf.c_str());
@@ -22,12 +21,17 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, unsigned int 
     p->data = buf;
     extent_store[id] = p;
   } else{
+    int size = buf.size();
     std::string data = extent_store[id]->data;
-    unsigned int oldSize = data.size();
-    if(offset + size > oldSize){
-      data.append(offset + size - oldSize, '0');
+    if(size > 0){
+      unsigned int oldSize = data.size();
+      if(offset + size > oldSize){
+        data.resize(offset + size);
+      }
+      data.replace(offset, size, buf);
+    } else{
+      data.resize(offset);
     }
-    data.replace(offset, size, buf);
   }
   printf("Extent_Server::put - key %llu enter, extent_store[id]->data: %s\n", id, extent_store[id]->data.c_str());
   return extent_protocol::OK;
@@ -36,10 +40,8 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, unsigned int 
 int extent_server::get(extent_protocol::extentid_t id, int offset, unsigned int size, std::string &buf)
 {
   // You fill this in for Lab 2.
-//  printf("Extent_Server::get - key %d enter\n", id);
   if(extent_store.find(id) != extent_store.end()){
     std::string data = extent_store[id]->data;
-//    printf("Extent_Server::get - key %d, get value: %s\n", id, data.c_str());
     printf("Extent_Server::get - key %llu, get value: %s\n", id, data.c_str());
 
     int totalSize = buf.size();
@@ -71,19 +73,19 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
   return extent_protocol::OK;
 }
 
-int extent_server::setattr(extent_protocol::extentid_t id, int size, std::string &buf)
-{
-  if(extent_store.find(id) == extent_store.end())
-    return extent_protocol::NOENT;
-  extent_value *p = extent_store[id];
-  int oldSize = p->ext_attr.size;
-  if(oldSize < size){
-    std::string data = p->data;
-    for(int i = oldSize; i < size; i++)
-      data[i] = '\0';
-  }
-  return extent_protocol::OK;
-}
+//int extent_server::setattr(extent_protocol::extentid_t id, int size, std::string &buf)
+//{
+//  if(extent_store.find(id) == extent_store.end())
+//    return extent_protocol::NOENT;
+//  extent_value *p = extent_store[id];
+//  int oldSize = p->ext_attr.size;
+//  if(oldSize < size){
+//    std::string data = p->data;
+//    for(int i = oldSize; i < size; i++)
+//      data[i] = '\0';
+//  }
+//  return extent_protocol::OK;
+//}
 
 int extent_server::remove(extent_protocol::extentid_t id, int &)
 {

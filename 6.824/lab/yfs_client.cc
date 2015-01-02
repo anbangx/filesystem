@@ -160,7 +160,7 @@ int yfs_client::createroot()
   printf("file_buf append: %s\n", file_buf.c_str());
 
   // flush into server
-  if (ec->put(root_inum, -1, 0, file_buf) != extent_protocol::OK)
+  if (ec->put(root_inum, -1, file_buf) != extent_protocol::OK)
      r = IOERR;
   return r;
 }
@@ -203,14 +203,14 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
   if(!isfile)
     file_buf.append('/' + filename(file_inum) + "/" + name);
   // Create an empty extent for ino
-  if (ec->put(file_inum, -1, 0, file_buf) != extent_protocol::OK) {
+  if (ec->put(file_inum, -1, file_buf) != extent_protocol::OK) {
      r = IOERR;
      goto release;
   }
 
   // Add a <name, ino> entry into @parent
   p_buf.append('/' + filename(file_inum) + "/" + name);
-  if (ec->put(p_inum,-1, 0, p_buf) != extent_protocol::OK) {
+  if (ec->put(p_inum, -1, p_buf) != extent_protocol::OK) {
     r = IOERR;
     goto release;
   }
@@ -229,7 +229,8 @@ int
 yfs_client::setattr(yfs_client::inum inum, int size)
 {
   int r = OK;
-  if (ec->setattr(inum, size) != extent_protocol::OK) {
+  std::string buf;
+  if (ec->put(inum, size, buf) != extent_protocol::OK) {
     r = NOENT;
     goto release;
   }
@@ -298,7 +299,7 @@ int
 yfs_client::write(inum inum, int offset, unsigned int size, std::string buf)
 {
   int r = OK;
-  if(ec->put(inum, offset, size, buf) != extent_protocol::OK){
+  if(ec->put(inum, offset, buf) != extent_protocol::OK){
     printf("YFS_Client::write %016llx file not exist\n", inum);
     r = NOENT;
     goto release;
