@@ -13,27 +13,47 @@ extent_server::extent_server()
 }
 
 
-int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
+int extent_server::put(extent_protocol::extentid_t id, int offset, unsigned int size, std::string &buf)
 {
   // You fill this in for Lab 2.
-  printf("Extent_Server::put - key %d enter, buf: %s\n", id, buf.c_str());
-  extent_value *p = new extent_value();
-  p->data = buf;
-  extent_store[id] = p;
-  printf("Extent_Server::put - key %d enter, extent_store[id]->data: %s\n", id, extent_store[id]->data.c_str());
+  printf("Extent_Server::put - key %llu enter, buf: %s\n", id, buf.c_str());
+  if(offset == -1){
+    extent_value *p = new extent_value();
+    p->data = buf;
+    extent_store[id] = p;
+  } else{
+    std::string data = extent_store[id]->data;
+    unsigned int oldSize = data.size();
+    if(offset + size > oldSize){
+      data.append(offset + size - oldSize, '0');
+    }
+    data.replace(offset, size, buf);
+  }
+  printf("Extent_Server::put - key %llu enter, extent_store[id]->data: %s\n", id, extent_store[id]->data.c_str());
   return extent_protocol::OK;
 }
 
-int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
+int extent_server::get(extent_protocol::extentid_t id, int offset, unsigned int size, std::string &buf)
 {
   // You fill this in for Lab 2.
-  printf("Extent_Server::get - key %d enter\n", id);
+//  printf("Extent_Server::get - key %d enter\n", id);
   if(extent_store.find(id) != extent_store.end()){
-    buf = extent_store[id]->data;
-    printf("Extent_Server::get - key %d, get value: %s\n", id, buf.c_str());
+    std::string data = extent_store[id]->data;
+//    printf("Extent_Server::get - key %d, get value: %s\n", id, data.c_str());
+    printf("Extent_Server::get - key %llu, get value: %s\n", id, data.c_str());
+
+    int totalSize = buf.size();
+    if(offset == -1) // case1: read all data
+      buf = data;
+    else if(offset < totalSize){
+      if(offset + size < totalSize)
+        buf = data.substr(offset);
+      else
+        buf = data.substr(offset, size);
+    }
     return extent_protocol::OK;
   } else{
-    printf("Extent_Server::get - key %d, value is empty.\n", id);
+    printf("Extent_Server::get - key %llu, value is empty.\n", id);
     return extent_protocol::NOENT;
   }
 }
@@ -51,15 +71,15 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
   return extent_protocol::OK;
 }
 
-int extent_server::setattr(extent_protocol::extentid_t id, extent_protocol::attr a, bool sizeChanged)
+int extent_server::setattr(extent_protocol::extentid_t id, int size, std::string &buf)
 {
-  extent_value *p = new extent_value();
+  if(extent_store.find(id) == extent_store.end())
+    return extent_protocol::NOENT;
+  extent_value *p = extent_store[id];
   int oldSize = p->ext_attr.size;
-  p->ext_attr = a;
-  extent_store[id] = p;
-  if(sizeChanged && oldSize < a.size){
-    std:string data = p->data;
-    for(int i = oldSize; i < a.size; i++)
+  if(oldSize < size){
+    std::string data = p->data;
+    for(int i = oldSize; i < size; i++)
       data[i] = '\0';
   }
   return extent_protocol::OK;

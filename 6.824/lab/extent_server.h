@@ -18,10 +18,10 @@ class extent_server {
   std::map<extent_protocol::extentid_t, extent_value *> extent_store;
   extent_server();
 
-  int put(extent_protocol::extentid_t id, std::string, int &);
-  int get(extent_protocol::extentid_t id, std::string &);
+  int put(extent_protocol::extentid_t id, int offset, unsigned int size, std::string &);
+  int get(extent_protocol::extentid_t id, int offset, unsigned int size, std::string &);
   int getattr(extent_protocol::extentid_t id, extent_protocol::attr &);
-  int setattr(extent_protocol::extentid_t id, extent_protocol::attr a, bool sizeChanged);
+  int setattr(extent_protocol::extentid_t id, int size, std::string &buf);
   int remove(extent_protocol::extentid_t id, int &);
 };
 

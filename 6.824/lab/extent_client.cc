@@ -20,7 +20,7 @@ extent_client::extent_client(std::string dst)
 }
 
 extent_protocol::status
-extent_client::get(extent_protocol::extentid_t eid, int off, unsigned int size, std::string &buf)
+extent_client::get(extent_protocol::extentid_t eid, int offet, unsigned int size, std::string &buf)
 {
   printf("Extent_Client::get - key %d enter\n", eid);
   extent_protocol::status ret = extent_protocol::OK;
@@ -38,15 +38,15 @@ extent_client::getattr(extent_protocol::extentid_t eid, extent_protocol::attr &a
 }
 
 extent_protocol::status
-extent_client::setattr(extent_protocol::extentid_t eid, yfs_client::fileinfo attr, bool sizeChange)
+extent_client::setattr(extent_protocol::extentid_t eid, int size)
 {
   extent_protocol::status ret = extent_protocol::OK;
-  ret = cl->call(extent_protocol::setattr, eid, attr, sizeChange);
+  ret = cl->call(extent_protocol::setattr, eid, size);
   return ret;
 }
 
 extent_protocol::status
-extent_client::put(extent_protocol::extentid_t eid, int off, std::string buf)
+extent_client::put(extent_protocol::extentid_t eid, int offset, unsigned int size, std::string buf)
 {
   printf("Extent_Client::put - key %d enter, buf: %s\n", eid, buf.c_str());
   extent_protocol::status ret = extent_protocol::OK;

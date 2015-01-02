@@ -52,7 +52,9 @@ class yfs_client {
 
   inum new_inum(bool isfile);
 
-  int setattr(inum inum, struct stat *st, bool sizeChanged);
+  int setattr(inum inum, int size);
+  int read(inum inum, int offset, unsigned int size, std::string buf);
+  int write(inum inum, int offset, unsigned int size, std::string buf);
 };
 
 #endif 

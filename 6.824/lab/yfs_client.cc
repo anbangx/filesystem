@@ -160,7 +160,7 @@ int yfs_client::createroot()
   printf("file_buf append: %s\n", file_buf.c_str());
 
   // flush into server
-  if (ec->put(root_inum, -1, file_buf) != extent_protocol::OK)
+  if (ec->put(root_inum, -1, 0, file_buf) != extent_protocol::OK)
      r = IOERR;
   return r;
 }
@@ -203,14 +203,14 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
   if(!isfile)
     file_buf.append('/' + filename(file_inum) + "/" + name);
   // Create an empty extent for ino
-  if (ec->put(file_inum, -1, file_buf) != extent_protocol::OK) {
+  if (ec->put(file_inum, -1, 0, file_buf) != extent_protocol::OK) {
      r = IOERR;
      goto release;
   }
 
   // Add a <name, ino> entry into @parent
   p_buf.append('/' + filename(file_inum) + "/" + name);
-  if (ec->put(p_inum,-1, p_buf) != extent_protocol::OK) {
+  if (ec->put(p_inum,-1, 0, p_buf) != extent_protocol::OK) {
     r = IOERR;
     goto release;
   }
@@ -226,15 +226,10 @@ void yfs_client::printdirent(std::vector<dirent> r_dirent){
 }
 
 int
-yfs_client::setattr(yfs_client::inum inum, struct stat *st, bool sizeChanged)
+yfs_client::setattr(yfs_client::inum inum, int size)
 {
   int r = OK;
-  yfs_client::fileinfo attr;
-  attr.atime = st->st_atim;
-  attr.ctime = st->st_ctim;
-  attr.mtime = st->st_mtim;
-  attr.size = st->st_size;
-  if (ec->setattr(inum, attr, sizeChanged) != extent_protocol::OK) {
+  if (ec->setattr(inum, size) != extent_protocol::OK) {
     r = NOENT;
     goto release;
   }
@@ -281,6 +276,34 @@ yfs_client::readdir(inum p_inum, std::vector<dirent> &r_dirent){
   delete[] cstr;
   r = OK;
   printdirent(r_dirent);
+  release:
+  return r;
+}
+
+int
+yfs_client::read(inum inum, int offset, unsigned int size, std::string buf)
+{
+  int r = OK;
+  if(ec->get(inum, offset, size, buf) != extent_protocol::OK){
+    printf("YFS_Client::read %016llx file not exist\n", inum);
+    r = NOENT;
+    goto release;
+  }
+  printf("YFS_Client::read %016llx file read success, buf: %s\n", inum, buf.c_str());
+  release:
+  return r;
+}
+
+int
+yfs_client::write(inum inum, int offset, unsigned int size, std::string buf)
+{
+  int r = OK;
+  if(ec->put(inum, offset, size, buf) != extent_protocol::OK){
+    printf("YFS_Client::write %016llx file not exist\n", inum);
+    r = NOENT;
+    goto release;
+  }
+  printf("YFS_Client::write %016llx file write success\n", inum);
   release:
   return r;
 }
