@@ -314,16 +314,17 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   yfs_client::inum p_inum = parent;
   yfs_client::inum c_inum;
 
-  printf("fuseserver_lookup parent:%016lx name:%s\n", parent, name);
+  printf("fuseserver_lookup parent %016lx, name %s\n", parent, name);
   ret = yfs->lookup(p_inum, name, c_inum);
+  struct stat st;
   if (ret == yfs_client::EXIST) {
-    struct stat st;
     e.ino = c_inum;
     if(getattr(c_inum, st) == yfs_client::OK)
       e.attr = st;
     found = true;
   }
-  printf("fuseserver_lookup found %s", found ? "true" : "false");
+  printf("fuseserver_lookup found %s\n", found ? "true" : "false");
+  printf("fuseserver_lookup c_inum %016lx, name %s, attr %u\n", c_inum, name, st.st_size);
   if (found)
     fuse_reply_entry(req, &e);
   else

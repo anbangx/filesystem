@@ -251,7 +251,7 @@ yfs_client::readdir(inum p_inum, std::vector<dirent> &r_dirent){
      r = NOENT;
      goto release;
   }
-  printf("YFS_Client::readdir %016llx parent dir return succeeds, p_buf: %s\n", p_inum, p_buf.c_str());
+  printf("YFS_Client::readdir parent %016llx return succeeds, p_buf %s\n", p_inum, p_buf.c_str());
 
   cstr = new char[p_buf.size() + 1];
   strcpy(cstr, p_buf.c_str());
@@ -299,7 +299,7 @@ int
 yfs_client::write(inum inum, int offset, unsigned int size, std::string buf)
 {
   int r = OK;
-  if(ec->put(inum, offset, buf) != extent_protocol::OK){
+  if(ec->put(inum, offset, buf.substr(0, size)) != extent_protocol::OK){
     printf("YFS_Client::write %016llx file not exist\n", inum);
     r = NOENT;
     goto release;
