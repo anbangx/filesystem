@@ -126,9 +126,9 @@ yfs_client::lookup(inum p_inum, const char *name, inum &c_inum){
   }
   cstr = new char[p_buf.size() + 1];
   strcpy(cstr, p_buf.c_str());
+  printf("YFS_Client::lookup cstr %s\n", cstr);
   p = strtok (cstr, "/");
   while (p != NULL) {
-//    printf("createfile: p %c\n", *p);
     // Skip its own dir name & inum
     if(count != 1 && count % 2 == 1) {
        if((strlen(p) == strlen(name)) && (!strncmp(p, name, strlen(name)))) {
@@ -282,7 +282,7 @@ yfs_client::readdir(inum p_inum, std::vector<dirent> &r_dirent){
 }
 
 int
-yfs_client::read(inum inum, int offset, unsigned int size, std::string buf)
+yfs_client::read(inum inum, int offset, unsigned int size, std::string &buf)
 {
   int r = OK;
   if(ec->get(inum, offset, size, buf) != extent_protocol::OK){
@@ -290,7 +290,7 @@ yfs_client::read(inum inum, int offset, unsigned int size, std::string buf)
     r = NOENT;
     goto release;
   }
-  printf("YFS_Client::read %016llx file read success, buf: %s\n", inum, buf.c_str());
+  printf("YFS_Client::read %016llx file read success, buf %s\n", inum, buf.c_str());
   release:
   return r;
 }

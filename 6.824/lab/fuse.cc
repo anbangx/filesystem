@@ -167,13 +167,13 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 #if 1
   std::string buf;
   yfs_client::inum inum = ino;
-  printf("fuseserver_read ino %016lx offset %d size %d\n", ino, off, size);
+  printf("fuseserver_read inum %016lx offset %d size %d\n", inum, off, size);
   yfs_client::status ret = yfs->read(inum, off, size, buf);
   if(ret != yfs_client::OK){
     fuse_reply_err(req, ENOENT);
     return;
   }
-  printf("fuseserver_read ino %016lx read data %s\n", ino, buf.c_str());
+  printf("fuseserver_read inum %016lx, read buf %s, buf.size %u\n", inum, buf.c_str(), buf.size());
   // Change the above "#if 0" to "#if 1", and your code goes here
   fuse_reply_buf(req, buf.data(), buf.size());
 #else
@@ -316,7 +316,7 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 
   printf("fuseserver_lookup parent:%016lx name:%s\n", parent, name);
   ret = yfs->lookup(p_inum, name, c_inum);
-  if (ret == yfs_client::OK) {
+  if (ret == yfs_client::EXIST) {
     struct stat st;
     e.ino = c_inum;
     if(getattr(c_inum, st) == yfs_client::OK)
@@ -329,7 +329,6 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   else
     fuse_reply_err(req, ENOENT);
 }
-
 
 struct dirbuf {
     char *p;
