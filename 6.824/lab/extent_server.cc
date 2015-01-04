@@ -14,34 +14,30 @@ extent_server::extent_server()
 
 int extent_server::put(extent_protocol::extentid_t id, int offset, std::string buf, int &r)
 {
+  printf("Extent_Server::put id %016llx, offset %d, buf %s\n", id, offset, buf.c_str());
   // You fill this in for Lab 2.
-  printf("Extent_Server::put - id %016lx, offset %d, buf %s, buf.size %u\n", id, offset, buf.c_str(), buf.size());
-  if(offset == -1){
-    extent_value *p = new extent_value();
-    p->data = buf;
-    extent_store[id] = p;
-    printf("Extent_Server::put - create new file/folder: %s\n", extent_store[id]->data.c_str());
-  } else{
-    int size = buf.size();
-    std::string data = extent_store[id]->data;
-    if(size > 0){
-      printf("Extent_Server::put - data1 %s\n", data.c_str());
-      unsigned int oldSize = data.size();
-      if(offset + size > oldSize){
-        data.resize(offset + size);
-      }
-      printf("Extent_Server::put - data2 %s\n", data.c_str());
-      data.replace(offset, size, buf);
-      printf("Extent_Server::put - put data succeeds.\n");
-      extent_store[id]->data = data;
-      printf("Extent_Server::put - now id %016lx, extent_store[id]->data %s\n", id, extent_store[id]->data.c_str());
-    } else{
-      printf("Extent_Server::put - setattr\n");
-      data.resize(offset);
-    }
+  r = extent_protocol::OK;
+  extent_value *extent_obj;
+  if (extent_store.count(id) <= 0)
+    extent_obj = new extent_value();
+  else
+    extent_obj = extent_store[id];
+
+  if (offset < 0)
+    extent_obj->data = buf;
+  else{
+    if (offset > extent_obj->ext_attr.size){
+      extent_obj->data.resize(offset);
+      extent_obj->data.append(buf);
+    } else if (buf != "")
+      extent_obj->data.replace(offset, buf.size(), buf);
+    else
+      extent_obj->data.resize(offset);
   }
-  extent_store[id]->ext_attr.size = extent_store[id]->data.size();
-  printf("Extent_Server::put - set ext_attr.size %u\n", extent_store[id]->ext_attr.size);
+  extent_obj->ext_attr.mtime = extent_obj->ext_attr.ctime = time(NULL);
+  extent_obj->ext_attr.size = extent_obj->data.size();
+  extent_store[id] = extent_obj;
+  printf("Extent_Server::put succeeds, id %016llx, buf %s\n", id, buf.c_str());
   return extent_protocol::OK;
 }
 
