@@ -43,27 +43,23 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string b
 
 int extent_server::get(extent_protocol::extentid_t id, int offset, unsigned int size, std::string &buf)
 {
-  printf("Extent_Server::get - id %016lx, offset %d, size %u\n", id, offset, size);
+  printf("Extent_Server::get - id %016llx, offset %d, size %u\n", id, offset, size);
   // You fill this in for Lab 2.
   if(extent_store.find(id) != extent_store.end()){
     std::string data = extent_store[id]->data;
-    printf("Extent_Server::get - id %016lx, data %s\n", id, data.c_str());
     int totalSize = data.size();
     if(offset == -1) // case1: read all data
       buf = data;
     else if(offset < totalSize){
-      if(offset + size < totalSize){
-        printf("Extent_Server::get offset + size < totalSize\n");
-        buf = data.substr(offset);
-      }
-      else{
+      if(offset + size < totalSize)
         buf = data.substr(offset, size);
-      }
+      else
+        buf = data.substr(offset);
     }
-    printf("Extent_Server::get - id %016lx, get buf %s, buf.size %u\n", id, buf.c_str(), buf.size());
+    printf("Extent_Server::get - id %016llx, get buf %s, buf.size %u\n", id, buf.c_str(), buf.size());
     return extent_protocol::OK;
   } else{
-    printf("Extent_Server::get - id %016lx, value is empty.\n", id);
+    printf("Extent_Server::get - id %016llx, value is empty.\n", id);
     return extent_protocol::NOENT;
   }
 }
