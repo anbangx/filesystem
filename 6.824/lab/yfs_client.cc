@@ -110,8 +110,8 @@ yfs_client::new_inum(bool isfile)
   int rand_num = limited_rand(0x7FFFFFFF);
   if (isfile)
     finum = rand_num | 0x0000000080000000;
-//  else
-//  finum = rand_num & 0x000000007FFFFFFF;
+  else
+    finum = rand_num & 0x000000007FFFFFFF;
   printf("new_inum %016llx \n",finum);
   return finum;
 }
@@ -170,6 +170,31 @@ int yfs_client::createroot()
   return r;
 }
 
+bool
+yfs_client::findfile(std::string p_buf, const char *name, inum &inum)
+{
+  char *cstr, *p;
+  int count = 2;
+  cstr = new char[p_buf.size() + 1];
+  strcpy(cstr, p_buf.c_str());
+  p = strtok (cstr, "/");
+  while (p != NULL) {
+    // Skip its own dir name & inum
+    if(count % 2 == 1) {
+       if((strlen(p) == strlen(name)) && (!strncmp(p, name, strlen(name)))) {
+         delete[] cstr;
+         return true;
+      }
+    } else
+      inum = n2i(p);
+    p = strtok(NULL,"/");
+    count++;
+  }
+
+  delete[] cstr;
+  return false;
+}
+
 int
 yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
 {
@@ -179,6 +204,7 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
   int count = 0;
   inum file_inum = new_inum(isfile);
   std::string file_buf("");
+  inum inum;
   // Read Parent Dir and check if name already exists
   if (ec->get(p_inum, -1, 0, p_buf) != extent_protocol::OK) {
      printf("YFS_Client::createfile %016llx parent dir not exist\n", p_inum);
@@ -187,24 +213,28 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
   }
   printf("YFS_Client::createfile %016llx parent dir return succeeds, p_buf: %s\n", p_inum, p_buf.c_str());
 
-  cstr = new char[p_buf.size() + 1];
-  strcpy(cstr, p_buf.c_str());
-  p = strtok (cstr, "/");
-  while (p != NULL) {
-//    printf("createfile: p %c\n", *p);
-    // Skip its own dir name & inum
-    if(count != 1 && count % 2 == 1) {
-       if((strlen(p) == strlen(name)) && (!strncmp(p, name, strlen(name)))) {
-         delete[] cstr;
-         r = EXIST;
-         goto release;
-      }
-    }
-    p = strtok(NULL,"/");
-    count++;
+//  cstr = new char[p_buf.size() + 1];
+//  strcpy(cstr, p_buf.c_str());
+//  p = strtok (cstr, "/");
+//  while (p != NULL) {
+//    // Skip its own dir name & inum
+//    if(count != 1 && count % 2 == 1) {
+//       if((strlen(p) == strlen(name)) && (!strncmp(p, name, strlen(name)))) {
+//         delete[] cstr;
+//         r = EXIST;
+//         goto release;
+//      }
+//    }
+//    p = strtok(NULL,"/");
+//    count++;
+//  }
+//
+//  delete[] cstr;
+  if(findfile(p_buf, name, inum) == true){
+    r = EXIST;
+    goto release;
   }
 
-  delete[] cstr;
   if(!isfile)
     file_buf.append('/' + filename(file_inum) + "/" + name);
   // Create an empty extent for ino
@@ -228,6 +258,34 @@ void yfs_client::printdirent(std::vector<dirent> r_dirent){
   for(int i = 0; i < r_dirent.size(); i++){
     printf("YFS_Client::readdir %d. r_dirent[i].name=%s r_dirent[i].inum=%d\n", i, r_dirent[i].name.c_str(), r_dirent[i].inum);
   }
+}
+
+std::vector<yfs_client::dirent>
+yfs_client::getSubfiles(std::string p_buf){
+  std::vector<yfs_client::dirent> r_dirent;
+  char *cstr, *p;
+  std::string inum_buf;
+  dirent curr_dirent;
+  cstr = new char[p_buf.size() + 1];
+  int count = 2;
+  strcpy(cstr, p_buf.c_str());
+  p = strtok (cstr, "/");
+  while (p != NULL) {
+    // Skip its own dir name & inum
+    if(count % 2 == 1) { // name
+      curr_dirent.name = p;
+      r_dirent.push_back(curr_dirent);
+    }
+    else { // ino
+      inum_buf = p;
+      curr_dirent.inum = n2i(inum_buf);
+    }
+    p = strtok(NULL,"/");
+    count++;
+  }
+
+  delete[] cstr;
+  return r_dirent;
 }
 
 int
@@ -258,28 +316,7 @@ yfs_client::readdir(inum p_inum, std::vector<dirent> &r_dirent){
   }
   printf("YFS_Client::readdir parent %016llx return succeeds, p_buf %s\n", p_inum, p_buf.c_str());
 
-  cstr = new char[p_buf.size() + 1];
-  strcpy(cstr, p_buf.c_str());
-  p = strtok (cstr, "/");
-  while (p != NULL) {
-    // Skip its own dir name & inum
-    if(count < 2){
-      count++;
-      continue;
-    }
-    if(count % 2 == 1) { // name
-      curr_dirent.name = p;
-      r_dirent.push_back(curr_dirent);
-    }
-    else { // ino
-      inum_buf = p;
-      curr_dirent.inum = n2i(inum_buf);
-    }
-    p = strtok(NULL,"/");
-    count++;
-  }
-
-  delete[] cstr;
+  r_dirent = getSubfiles(p_buf);
   r = OK;
   printdirent(r_dirent);
   release:
@@ -309,8 +346,22 @@ yfs_client::write(inum inum, int offset, unsigned int size, std::string buf)
     r = NOENT;
     goto release;
   }
-  printf("YFS_Client::write %016llx file write success\n", inum);
+  printf("YFS_Client::write %016llx success\n", inum);
   release:
   return r;
+}
+
+int
+yfs_client::remove(inum p_num, const char *name)
+{
+//  int r = OK;
+//  if(ec->remove(inum) != extent_protocol::OK){
+//    printf("YFS_Client::remove %016llx file not exist\n", inum);
+//    r = NOENT;
+//    goto release;
+//  }
+//  printf("YFS_Client::remove %016llx success\n", inum);
+//  release:
+//  return r;
 }
 

@@ -51,12 +51,15 @@ class yfs_client {
   int lookup(inum p_inum, const char *name, inum &c_inum);
   int readdir(inum p_inum, std::vector<dirent> &r_dirent);
   void printdirent(std::vector<dirent> r_dirent);
+  std::vector<dirent> getSubfiles(std::string p_buf);
+  bool findfile(std::string p_buf, const char *name, inum &inum);
 
   inum new_inum(bool isfile);
 
   int setattr(inum inum, int size);
   int read(inum inum, int offset, unsigned int size, std::string &buf);
   int write(inum inum, int offset, unsigned int size, std::string buf);
+  int remove(inum p_num, const char *name);
 };
 
 #endif 
