@@ -11,6 +11,7 @@
 
 class yfs_client {
   extent_client *ec;
+  lock_client *lc;
  public:
 
   typedef unsigned long long inum;
@@ -58,7 +59,7 @@ class yfs_client {
 
   int setattr(inum inum, int size);
   int read(inum inum, int offset, unsigned int size, std::string &buf);
-  int write(inum inum, int offset, unsigned int size, std::string buf);
+  int write(inum inum, int offset, unsigned int size, const char *buf);
   int unlink(inum p_inum, const char *name);
 };
 

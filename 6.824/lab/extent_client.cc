@@ -40,7 +40,7 @@ extent_client::getattr(extent_protocol::extentid_t eid, extent_protocol::attr &a
 extent_protocol::status
 extent_client::put(extent_protocol::extentid_t eid, int offset, std::string buf)
 {
-  printf("Extent_Client::put - key %d enter, buf: %s\n", eid, buf.c_str());
+  printf("Extent_Client::put - id %d enter, buf: %s\n", eid, buf.c_str());
   extent_protocol::status ret = extent_protocol::OK;
   int r;
   ret = cl->call(extent_protocol::put, eid, offset, buf, r);
