@@ -18,6 +18,8 @@ lock_tester
 rpctest
 extent_server
 yfs_client
+test-lab-3-b
+test-lab-3-c
 
 # dependencies files
 *.d
