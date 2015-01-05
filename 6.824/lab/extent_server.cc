@@ -35,6 +35,7 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string b
       extent_obj->data.resize(offset);
   }
   extent_obj->ext_attr.mtime = extent_obj->ext_attr.ctime = time(NULL);
+  extent_obj->ext_attr.mtime = extent_obj->ext_attr.mtime = time(NULL);
   extent_obj->ext_attr.size = extent_obj->data.size();
   extent_store[id] = extent_obj;
   printf("Extent_Server::put succeeds, id %016llx, buf %s\n", id, buf.c_str());
@@ -71,13 +72,19 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
   // for now because it's difficult to get FUSE to do anything (including
   // unmount) if getattr fails.
   a = extent_store[id]->ext_attr;
+  printf("Extent_Server::getattr - id %016llx", id);
+  printattr(a);
   return extent_protocol::OK;
+}
+
+void extent_server::printattr(extent_protocol::attr a){
+  printf("Extent_Server::getattr a.atime %u, a.ctime %u, a.mtime %u, a.size %u", a.atime, a.ctime, a.mtime, a.size);
 }
 
 int extent_server::remove(extent_protocol::extentid_t id, int &)
 {
   // You fill this in for Lab 2.
   extent_store.erase(id);
-  return extent_protocol::IOERR;
+  return extent_protocol::OK;
 }
 

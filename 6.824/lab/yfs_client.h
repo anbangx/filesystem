@@ -59,7 +59,7 @@ class yfs_client {
   int setattr(inum inum, int size);
   int read(inum inum, int offset, unsigned int size, std::string &buf);
   int write(inum inum, int offset, unsigned int size, std::string buf);
-  int remove(inum p_num, const char *name);
+  int unlink(inum p_inum, const char *name);
 };
 
 #endif 

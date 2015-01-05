@@ -167,13 +167,13 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 #if 1
   std::string buf;
   yfs_client::inum inum = ino;
-  printf("fuseserver_read inum %016lx offset %d size %d\n", inum, off, size);
+  printf("fuseserver_read inum %016llx offset %d size %d\n", inum, off, size);
   yfs_client::status ret = yfs->read(inum, off, size, buf);
   if(ret != yfs_client::OK){
     fuse_reply_err(req, ENOENT);
     return;
   }
-  printf("fuseserver_read inum %016lx, read buf %s, buf.size %u\n", inum, buf.c_str(), buf.size());
+  printf("fuseserver_read inum %016llx, read buf %s, buf.size %u\n", inum, buf.c_str(), buf.size());
   // Change the above "#if 0" to "#if 1", and your code goes here
   fuse_reply_buf(req, buf.data(), buf.size());
 #else
@@ -204,7 +204,7 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
   // You fill this in for Lab 2
 #if 1
   // Change the above line to "#if 1", and your code goes here
-  printf("fuseserver_write ino %016lx offset %d size %d writeBuf %s\n", ino, off, size, buf);
+  printf("fuseserver_write ino %016llx offset %d size %d writeBuf %s\n", ino, off, size, buf);
   yfs_client::inum inum = ino;
   yfs_client::status ret = yfs->write(inum, off, size, buf);
   if(ret != yfs_client::OK){
@@ -250,7 +250,7 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   yfs_client::inum p_inum = parent;
   yfs_client::inum c_inum;
 
-  printf("fuseserver_createhelper parent %016lx name %s\n", parent, name);
+  printf("fuseserver_createhelper parent %016llx name %s\n", parent, name);
   ret = yfs->createfile(p_inum, name, c_inum, true);
   printf("fuseserver_createhelper ret: %d\n", ret);
   if (ret == yfs_client::OK) {
@@ -314,7 +314,7 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   yfs_client::inum p_inum = parent;
   yfs_client::inum c_inum;
 
-  printf("fuseserver_lookup parent %016lx, name %s\n", parent, name);
+  printf("fuseserver_lookup parent %016llx, name %s\n", parent, name);
   ret = yfs->lookup(p_inum, name, c_inum);
   struct stat st;
   if (ret == yfs_client::EXIST) {
@@ -324,7 +324,7 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
     found = true;
   }
   printf("fuseserver_lookup found %s\n", found ? "true" : "false");
-  printf("fuseserver_lookup c_inum %016lx, name %s, attr %u\n", c_inum, name, st.st_size);
+  printf("fuseserver_lookup c_inum %016llx, name %s, attr %u\n", c_inum, name, st.st_size);
   if (found)
     fuse_reply_entry(req, &e);
   else
@@ -388,7 +388,7 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
   // You fill this in for Lab 2
   ret = yfs->readdir(inum, r_dirent);
   if (ret == yfs_client::OK) {
-    for(it = r_dirent.begin();it < r_dirent.end(); it++) {
+    for(it = r_dirent.begin(); it < r_dirent.end(); it++) {
       dirbuf_add(&b, it->name.c_str(), it->inum);
     }
   }
@@ -468,15 +468,15 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
   // Not found:	fuse_reply_err(req, ENOENT);
   printf("fuseserver_unlink parent %016lx offset %d size %d writeBuf %s\n", parent);
   yfs_client::inum p_num = parent;
-  yfs_client::status ret = yfs->remove(p_num, name);
-  if(ret != yfs_client::OK){
-    fuse_reply_err(req, ENOENT);
-    return;
+  yfs_client::status ret = yfs->unlink(p_num, name);
+  if (ret == yfs_client::OK)
+       fuse_reply_err(req, 0);
+  else {
+    if (ret == yfs_client::NOENT)
+      fuse_reply_err(req, ENOENT);
+    else
+      fuse_reply_err(req, ENOSYS);
   }
-  printf("fuseserver_write succeeds");
-//  fuse_reply_write(req, size);
-
-  fuse_reply_err(req, ENOSYS);
 }
 
 void

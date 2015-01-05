@@ -21,6 +21,7 @@ class extent_server {
   int put(extent_protocol::extentid_t id, int offset, std::string, int &);
   int get(extent_protocol::extentid_t id, int offset, unsigned int size, std::string &);
   int getattr(extent_protocol::extentid_t id, extent_protocol::attr &);
+  void printattr(extent_protocol::attr a);
   int remove(extent_protocol::extentid_t id, int &);
 };
 
