@@ -17,6 +17,7 @@ class lock_server_cache {
    struct lock_cache_value {
      lock_state l_state;
      std::string owner_clientid; // used to send revoke
+     std::string retrying_clientid; // used to match with incoming acquire request
      std::list<std::string> waiting_clientids; // need to send retry
    };
    typedef std::map<lock_protocol::lockid_t, lock_cache_value*> TLockStateMap;

@@ -19,7 +19,44 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
                                int &)
 {
   lock_protocol::status ret = lock_protocol::OK;
-
+  pthread_mutex_lock(&lmap_mutex);
+  lock_cache_value* lc_value = get_lock_obj(lid);
+  if(lc_value->l_state == LOCKFREE){
+    lc_value->l_state = LOCKED;
+    ret = lock_protocol::OK;
+  }
+  else if(lc_value->l_state == RETRYING && lc_value->retrying_clientid == id){
+    if(lc_value->waiting_clientids.size() == 0)
+      lc_value->retrying_clientid.clear();
+    else{
+      // move front of waiting_clientid to retrying_clientid
+      lc_value->retrying_clientid = lc_value->waiting_clientids.front();
+      // schedule a revoke
+      client_info cin = new client_info();
+      cin.client_id = id;
+      cin.lid = lid;
+      revoke_list.push_back(cin);
+      // signal releaser
+      pthread_cond_signal(&releaser_cv);
+    }
+    lc_value->l_state = LOCKED;
+    ret = lock_protocol::OK;
+  }
+  else{ // lock is not available
+    // push to waiting_clientids
+    lc_value->waiting_clientids.push_back(id);
+    if(lc_value->l_state == LOCKED){
+        // schedule a revoke
+        client_info cin = new client_info();
+        cin.client_id = id;
+        cin.lid = lid;
+        revoke_list.push_back(cin);
+        // signal releaser
+        pthread_cond_signal(&releaser_cv);
+    }
+    ret = lock_protocol::RETRY;;
+  }
+  pthread_mutex_unlock(&lmap_mutex);
   return ret;
 }
 
@@ -28,6 +65,26 @@ lock_server_cache::release(lock_protocol::lockid_t lid, std::string id,
          int &r)
 {
   lock_protocol::status ret = lock_protocol::OK;
+  pthread_mutex_lock(&lmap_mutex);
+  lock_cache_value* lc_value = get_lock_obj(lid);
+  lc_value->owner_clientid.clear();
+  if(lc_value->waiting_clientids.size() == 0){
+    lc_value->l_state = LOCKFREE;
+  }
+  else{
+    lc_value->l_state = RETRYING;
+    lc_value->waiting_clientids.push_back(id);
+    if(lc_value->retrying_clientid.empty()){
+      lc_value->retrying_clientid = id;
+    }
+    // push into RETRY list
+    client_info cin = new client_info();
+    cin.client_id = id;
+    cin.lid = lid;
+    retry_list.push_back(cin);
+    // signal retryer
+    pthread_cond_signal(&retry_cv);
+  }
   return ret;
 }
 
