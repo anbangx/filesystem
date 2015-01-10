@@ -19,6 +19,7 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
                                int &)
 {
   lock_protocol::status ret = lock_protocol::OK;
+
   return ret;
 }
 
@@ -36,5 +37,17 @@ lock_server_cache::stat(lock_protocol::lockid_t lid, int &r)
   tprintf("stat request\n");
   r = nacquire;
   return lock_protocol::OK;
+}
+
+lock_server_cache::lock_cache_value* lock_server_cache::get_lock_obj(lock_protocol::lockid_t lid)
+{
+    lock_cache_value *lock_cache_obj;
+    if (tLockMap.count(lid) > 0)
+        lock_cache_obj = tLockMap[lid];
+    else {
+        lock_cache_obj = new lock_cache_value();
+        tLockMap[lid] = lock_cache_obj;
+    }
+    return lock_cache_obj;
 }
 

@@ -25,6 +25,25 @@ class lock_client_cache : public lock_client {
   int rlock_port;
   std::string hostname;
   std::string id;
+
+ protected:
+  enum lock_cache_state { NONE, FREE, LOCKED, ACQUIRING, RELEASING };
+  struct lock_cache_value {
+    lock_cache_state lc_state; // State of the lock cache
+    pthread_mutex_t client_lock_mutex; // To protect this structure
+    pthread_cond_t client_lock_cv; // CV to be notified of state change
+    pthread_cond_t client_revoke_cv; // CV to be notified if lock is revoked
+  };
+  typedef std::map<lock_protocol::lockid_t, lock_cache_value *> TLockCacheStateMap;
+  TLockCacheStateMap clientcacheMap;
+  pthread_mutex_t client_cache_mutex;
+  pthread_cond_t client_cache_cv;
+  pthread_mutex_t client_retry_mutex, client_releaser_mutex;
+  pthread_cond_t client_retry_cv, client_releaser_cv;
+  std::list<lock_protocol::lockid_t> retry_list;
+  std::list<lock_protocol::lockid_t> revoke_list;
+  lock_cache_value* get_lock_obj(lock_protocol::lockid_t lid);
+
  public:
   lock_client_cache(std::string xdst, class lock_release_user *l = 0);
   virtual ~lock_client_cache() {};
