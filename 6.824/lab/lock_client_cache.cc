@@ -73,6 +73,7 @@ lock_client_cache::release(lock_protocol::lockid_t lid)
   lock_cache_value* lc_value = get_lock_obj(lid);
   int r;
   pthread_mutex_lock(&lc_value->client_lock_mutex);
+  pthread_cond_wait(&client_retry_cv, &client_releaser_mutex);
   if(lc_value->lc_state == LOCKED){
     lc_value->lc_state = FREE;
     pthread_cond_signal(&lc_value->client_lock_cv);
@@ -80,6 +81,7 @@ lock_client_cache::release(lock_protocol::lockid_t lid)
   else if(lc_value->lc_state == RELEASING){
     pthread_cond_signal(&lc_value->client_revoke_cv);
   }
+  pthread_mutex_unlock(&lc_value->client_lock_mutex);
   return lock_protocol::OK;
 }
 
@@ -88,6 +90,12 @@ lock_client_cache::revoke_handler(lock_protocol::lockid_t lid,
                                   int &)
 {
   int ret = rlock_protocol::OK;
+  tprintf("got revoke from server for lid:%llu\n", lid);
+  pthread_mutex_lock(&client_releaser_mutex);
+  revoke_list.push_back(lid);
+  pthread_cond_signal(&client_releaser_cv);
+  pthread_mutex_unlock(&client_releaser_mutex);
+
   return ret;
 }
 
@@ -96,6 +104,13 @@ lock_client_cache::retry_handler(lock_protocol::lockid_t lid,
                                  int &)
 {
   int ret = rlock_protocol::OK;
+  // Push the lid to the retry list
+  tprintf("got retry from server for lid:%llu\n", lid);
+  pthread_mutex_lock(&client_retry_mutex);
+  retry_list.push_back(lid);
+  pthread_cond_signal(&client_retry_cv);
+  pthread_mutex_unlock(&client_retry_mutex);
+
   return ret;
 }
 
@@ -118,5 +133,38 @@ lock_client_cache::get_lock_obj(lock_protocol::lockid_t lid)
     }
     pthread_mutex_unlock(&client_cache_mutex);
     return lock_cache_obj;
+}
+
+void
+lock_client_cache::releaser(void) {
+  int ret, r;
+  while(true){
+    pthread_mutex_lock(&client_releaser_mutex);
+    pthread_cond_wait(&client_releaser_cv, &client_releaser_mutex);
+    while(!revoke_list.empty()){
+      lock_protocol::lockid_t lid = revoke_list.front();
+      revoke_list.pop_front();
+      lock_cache_value *lock_cache_obj = get_lock_obj(lid);
+      pthread_mutex_lock(&lock_cache_obj->client_lock_mutex);
+      tprintf("releaser: got lock checking\n");
+      if (lock_cache_obj->lc_state == LOCKED) {
+          lock_cache_obj->lc_state = RELEASING;
+          tprintf("releaser: waiting in releasing state\n");
+          pthread_cond_wait(&lock_cache_obj->client_revoke_cv,
+                  &lock_cache_obj->client_lock_mutex);
+      }
+      tprintf("releaser: calling server release, id: %s\n", id.c_str());
+      ret = cl->call(lock_protocol::release, id, lid, r);
+      lock_cache_obj->lc_state = NONE;
+      pthread_cond_signal(&lock_cache_obj->client_lock_cv);
+      pthread_mutex_unlock(&lock_cache_obj->client_lock_mutex);
+    }
+    pthread_mutex_unlock(&client_releaser_mutex);
+  }
+}
+
+void
+lock_client_cache::retryer(void) {
+
 }
 

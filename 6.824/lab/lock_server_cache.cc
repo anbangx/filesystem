@@ -108,3 +108,45 @@ lock_server_cache::lock_cache_value* lock_server_cache::get_lock_obj(lock_protoc
     return lock_cache_obj;
 }
 
+void
+lock_server_cache::retryer(void) {
+    int r;
+    rlock_protocol::status r_ret;
+    while(true) {
+        pthread_mutex_lock(&retry_mutex);
+        pthread_cond_wait(&retry_cv, &retry_mutex);
+        while (!retry_list.empty()) {
+            client_info c_info = retry_list.front();
+            retry_list.pop_front();
+            handle h(c_info.client_id);
+            if (h.safebind())
+                r_ret = h.safebind()->call(rlock_protocol::retry,
+                        c_info.lid, r);
+            if (!h.safebind() || r_ret != rlock_protocol::OK)
+                tprintf("retry RPC failed\n");
+        }
+        pthread_mutex_unlock(&retry_mutex);
+    }
+}
+
+void
+lock_server_cache::releaser(void) {
+    int r;
+    rlock_protocol::status r_ret;
+    while(true) {
+        pthread_mutex_lock(&releaser_mutex);
+        pthread_cond_wait(&releaser_cv, &releaser_mutex);
+        while (!revoke_list.empty()) {
+            client_info c_info = revoke_list.front();
+            revoke_list.pop_front();
+            handle h(c_info.client_id);
+            if (h.safebind())
+                r_ret = h.safebind()->call(rlock_protocol::revoke,
+                        c_info.lid, r);
+            if (!h.safebind() || r_ret != rlock_protocol::OK)
+                tprintf("revoke RPC failed\n");
+        }
+        pthread_mutex_unlock(&releaser_mutex);
+    }
+}
+
