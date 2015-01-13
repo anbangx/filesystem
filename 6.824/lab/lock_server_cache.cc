@@ -18,21 +18,24 @@ lock_server_cache::lock_server_cache()
 int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id, 
                                int &)
 {
+  tprintf("lock_server_cache::acquire lid: %llu start\n", lid);
   lock_protocol::status ret = lock_protocol::OK;
   pthread_mutex_lock(&lmap_mutex);
   lock_cache_value* lc_value = get_lock_obj(lid);
   if(lc_value->l_state == LOCKFREE){
+    tprintf("lock_server_cache::acquire lid: %llu 1.1 LOCKFREE -> LOCKED\n", lid);
     lc_value->l_state = LOCKED;
     ret = lock_protocol::OK;
   }
   else if(lc_value->l_state == RETRYING && lc_value->retrying_clientid == id){
+    tprintf("lock_server_cache::acquire lid: %llu 1.2 RETRYING -> LOCKED\n", lid);
     if(lc_value->waiting_clientids.size() == 0)
       lc_value->retrying_clientid.clear();
     else{
       // move front of waiting_clientid to retrying_clientid
       lc_value->retrying_clientid = lc_value->waiting_clientids.front();
       // schedule a revoke
-      client_info cin = new client_info();
+      client_info cin;
       cin.client_id = id;
       cin.lid = lid;
       revoke_list.push_back(cin);
@@ -44,17 +47,20 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
   }
   else{ // lock is not available
     // push to waiting_clientids
+    tprintf("lock_server_cache::acquire lid: %llu 1.3.1 add %s to waiting client\n", id.c_str());
     lc_value->waiting_clientids.push_back(id);
     if(lc_value->l_state == LOCKED){
         // schedule a revoke
-        client_info cin = new client_info();
+        client_info cin;
         cin.client_id = id;
         cin.lid = lid;
         revoke_list.push_back(cin);
         // signal releaser
+        tprintf("lock_server_cache::acquire lid: %llu LOCKED, schedule a revoke and signal releaser_cv", lid);
         pthread_cond_signal(&releaser_cv);
     }
-    ret = lock_protocol::RETRY;;
+    tprintf("lock_server_cache::acquire lid: %llu 1.3 OTHERS -> RETRY\n", lid);
+    ret = lock_protocol::RETRY;
   }
   pthread_mutex_unlock(&lmap_mutex);
   return ret;
@@ -64,27 +70,30 @@ int
 lock_server_cache::release(lock_protocol::lockid_t lid, std::string id, 
          int &r)
 {
+  tprintf("lock_server_cache::release lid: %llu start\n", lid);
   lock_protocol::status ret = lock_protocol::OK;
   pthread_mutex_lock(&lmap_mutex);
   lock_cache_value* lc_value = get_lock_obj(lid);
   lc_value->owner_clientid.clear();
   if(lc_value->waiting_clientids.size() == 0){
+    tprintf("lock_server_cache::release 1.1 lid: %llu empty in waiting list, -> LOCKFREE\n", lid);
     lc_value->l_state = LOCKFREE;
   }
   else{
+    tprintf("lock_server_cache::release 1.2.1 lid: %llu -> RETRYING\n", lid);
     lc_value->l_state = RETRYING;
-    lc_value->waiting_clientids.push_back(id);
-    if(lc_value->retrying_clientid.empty()){
-      lc_value->retrying_clientid = id;
-    }
-    // push into RETRY list
-    client_info cin = new client_info();
-    cin.client_id = id;
-    cin.lid = lid;
-    retry_list.push_back(cin);
-    // signal retryer
+    tprintf("lock_server_cache::release 1.2.2 lid: %llu move client_id from waiting list and add to retry_list\n", lid);
+    client_info c_info;
+    c_info.client_id = lc_value->waiting_clientids.front();
+    c_info.lid = lid;
+    lc_value->retrying_clientid = c_info.client_id;
+    pthread_mutex_lock(&retry_mutex);
+    retry_list.push_back(c_info);
+    tprintf("lock_server_cache::release 1.2.3 lid: %llu signal retry_cv\n", lid);
     pthread_cond_signal(&retry_cv);
+    pthread_mutex_unlock(&retry_mutex);
   }
+  pthread_mutex_unlock(&lmap_mutex);
   return ret;
 }
 
