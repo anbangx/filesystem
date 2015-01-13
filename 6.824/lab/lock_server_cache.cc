@@ -30,9 +30,9 @@ lock_server_cache::lock_server_cache()
   pthread_mutex_init(&lmap_mutex, NULL);
   pthread_cond_init(&lmap_state_cv, NULL);
   pthread_t retryer_thread, releaser_thread;
-  VERIFY(pthread_mutex_init(&retry_mutex,0) == 0);
+  VERIFY(pthread_mutex_init(&retry_mutex, 0) == 0);
   VERIFY(pthread_cond_init(&retry_cv, NULL) == 0);
-  VERIFY(pthread_mutex_init(&releaser_mutex,0) == 0);
+  VERIFY(pthread_mutex_init(&releaser_mutex, 0) == 0);
   VERIFY(pthread_cond_init(&releaser_cv, NULL) == 0);
 
   if (pthread_create(&retryer_thread, NULL, &retryerthread, (void *) this))
@@ -74,7 +74,7 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
   }
   else{ // lock is not available
     // push to waiting_clientids
-    tprintf("lock_server_cache::acquire lid:%llu 1.3.1 add %s to waiting client\n", id.c_str());
+    tprintf("lock_server_cache::acquire lid:%llu 1.3.1 add %s to waiting client\n", lid, id.c_str());
     lc_value->waiting_clientids.push_back(id);
     if(lc_value->l_state == LOCKED){
         // schedule a revoke
@@ -83,7 +83,7 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
         cin.lid = lid;
         revoke_list.push_back(cin);
         // signal releaser
-        tprintf("lock_server_cache::acquire lid:%llu LOCKED, schedule a revoke and signal releaser_cv", lid);
+        tprintf("lock_server_cache::acquire lid:%llu LOCKED, schedule a revoke and signal releaser_cv\n", lid);
         pthread_cond_signal(&releaser_cv);
     }
     tprintf("lock_server_cache::acquire lid:%llu 1.3 OTHERS -> RETRY\n", lid);
