@@ -70,18 +70,17 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
         lc_value->lc_state = LOCKED;
         break;
       }
-      else{
-        while(ret == lock_protocol::RETRY){
-          tprintf("lock_client_cache::acquire id:%s lid:%llu 1.2 wait on client_lock_cv\n", id.c_str(), lid);
-          pthread_cond_wait(&lc_value->client_lock_cv, &lc_value->client_lock_mutex);
-          if(lc_value->lc_state == FREE){
-            tprintf("lock_client_cache::acquire id:%s lid:%llu 1.3.1 get lock after waking from client_lock_cv\n", id.c_str(), lid);
-            lc_value->lc_state = LOCKED;
-            break;
-          } else{
-            tprintf("lock_client_cache::acquire id:%s lid:%llu 1.3.2 not get lock after waking from client_lock_cv\n", id.c_str(), lid);
-            continue;
-          }
+      else if(ret == lock_protocol::RETRY){
+        tprintf("lock_client_cache::acquire id:%s lid:%llu 1.2 wait on client_lock_cv\n", id.c_str(), lid);
+        pthread_cond_wait(&lc_value->client_lock_cv, &lc_value->client_lock_mutex);
+        tprintf("lock_client_cache::acquire id:%s lid:%llu 1.2 RETRY wake from client_lock_cv, lock state: %d\n", id.c_str(), lid, lc_value->lc_state);
+        if(lc_value->lc_state == FREE){
+          tprintf("lock_client_cache::acquire id:%s lid:%llu 1.3.1 get lock after waking from client_lock_cv\n", id.c_str(), lid);
+          lc_value->lc_state = LOCKED;
+          break;
+        } else{
+          tprintf("lock_client_cache::acquire id:%s lid:%llu 1.3.2 not get lock after waking from client_lock_cv\n", id.c_str(), lid);
+          continue;
         }
       }
     }
@@ -98,11 +97,12 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
         lc_value->lc_state = LOCKED;
         break;
       } else{
-        tprintf("lock_client_cache::acquire id:%s lid:%llu 3.2.2 get lock after waking from client_lock_cv\n", id.c_str(), lid);
+        tprintf("lock_client_cache::acquire id:%s lid:%llu 3.2.2 not get lock after waking from client_lock_cv\n", id.c_str(), lid);
         continue;
       }
     }
   }
+  lc_value->doflush = false;
   pthread_mutex_unlock(&lc_value->client_lock_mutex);
   return ret;
 }
@@ -119,7 +119,7 @@ lock_client_cache::release(lock_protocol::lockid_t lid)
     tprintf("lock_client_cache::release id:%s lid:%llu 1.1 lc_value->lc_state == LOCKED, release lock after waking from client_retry_cv\n", id.c_str(), lid);
     lc_value->lc_state = FREE;
     pthread_cond_signal(&lc_value->client_lock_cv);
-    tprintf("lock_client_cache::release id:%s lid:%llu 1.2 signal client_retry_cv\n", id.c_str(), lid);
+    tprintf("lock_client_cache::release id:%s lid:%llu 1.2 signal client_lock_cv\n", id.c_str(), lid);
   }
   else if(lc_value->lc_state == RELEASING){
     pthread_cond_signal(&lc_value->client_revoke_cv);
@@ -154,7 +154,7 @@ lock_client_cache::retry_handler(lock_protocol::lockid_t lid,
   pthread_mutex_lock(&client_retry_mutex);
   retry_list.push_back(lid);
   pthread_cond_signal(&client_retry_cv);
-  tprintf("lock_client_cache::revoke_handler id:%s add lid:%llu to retry_list and signal client_retry_cv\n", id.c_str(), lid);
+  tprintf("lock_client_cache::retry_handler id:%s add lid:%llu to retry_list and signal client_retry_cv\n", id.c_str(), lid);
   pthread_mutex_unlock(&client_retry_mutex);
 
   return ret;
@@ -193,6 +193,10 @@ lock_client_cache::releaser(void) {
       revoke_list.pop_front();
       lock_cache_value *lock_cache_obj = get_lock_obj(lid);
       pthread_mutex_lock(&lock_cache_obj->client_lock_mutex);
+//      tprintf("lock_client_cache::releaser id:%s 0. check if at lease lock once\n", id.c_str());
+//      while(lock_cache_obj->lc_state != LOCKED){
+//          pthread_cond_wait(&lock_cache_obj->client_lock_cv, &lock_cache_obj->client_lock_mutex);
+//      }
       tprintf("lock_client_cache::releaser id:%s 1. got lock checking\n", id.c_str());
       if (lock_cache_obj->lc_state == LOCKED) {
           lock_cache_obj->lc_state = RELEASING;
@@ -223,17 +227,17 @@ lock_client_cache::retryer(void) {
           lock_protocol::lockid_t lid = retry_list.front();
           retry_list.pop_front();
           lock_cache_value *lock_cache_obj = get_lock_obj(lid);
-          tprintf("lock_client_cache::retryer id:%s for lid:%llu\n", id.c_str(), lid);
+          tprintf("lock_client_cache::retryer id:%s wake from client_retry_cv and calling server acquire for lid:%llu\n", id.c_str(), lid);
           pthread_mutex_lock(&lock_cache_obj->client_lock_mutex);
           ret = cl->call(lock_protocol::acquire, lid, id, r);
           if (ret == lock_protocol::OK) {
               lock_cache_obj->lc_state = FREE;
               tprintf("lock_client_cache::retryer id:%s lid:%llu OK -> FREE and signal client_lock_cv\n", id.c_str(), lid);
               pthread_cond_signal(&lock_cache_obj->client_lock_cv);
-              pthread_mutex_unlock(&lock_cache_obj->client_lock_mutex);
           }
           else
               tprintf("lock_client_cache::retryer id:%s fail, should never happen, ret:%d\n", id.c_str(), ret);
+          pthread_mutex_unlock(&lock_cache_obj->client_lock_mutex);
       }
       pthread_mutex_unlock(&client_retry_mutex);
   }

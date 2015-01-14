@@ -29,6 +29,7 @@ class lock_client_cache : public lock_client {
  protected:
   enum lock_cache_state { NONE, FREE, LOCKED, ACQUIRING, RELEASING };
   struct lock_cache_value {
+    bool doflush;
     lock_cache_state lc_state; // State of the lock cache
     pthread_mutex_t client_lock_mutex; // To protect this structure
     pthread_cond_t client_lock_cv; // CV to be notified of state change

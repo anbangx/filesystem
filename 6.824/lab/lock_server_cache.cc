@@ -56,12 +56,11 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
     ret = lock_protocol::OK;
   }
   else if(lc_value->l_state == RETRYING && lc_value->retrying_clientid == id){
-    tprintf("lock_server_cache::acquire lid:%llu 1.2 RETRYING -> LOCKED\n", lid);
+    tprintf("lock_server_cache::acquire lid:%llu 1.2 id:%s RETRYING -> LOCKED\n", lid, id.c_str());
+    lc_value->waiting_clientids.pop_front();
     lc_value->l_state = LOCKED;
     lc_value->owner_clientid = id;
-    if(lc_value->waiting_clientids.size() == 0)
-      lc_value->retrying_clientid.clear();
-    else{
+    if(lc_value->waiting_clientids.size() > 0){
       lc_value->l_state = REVOKING;
       pthread_mutex_lock(&releaser_mutex);
       client_info c_info;
@@ -98,17 +97,17 @@ int
 lock_server_cache::release(lock_protocol::lockid_t lid, std::string id, 
          int &r)
 {
-  tprintf("lock_server_cache::release lid:%llu start\n", lid);
+  tprintf("lock_server_cache::release lid:%llu id:%s start\n", lid, id.c_str());
   lock_protocol::status ret = lock_protocol::OK;
   pthread_mutex_lock(&lmap_mutex);
   lock_cache_value* lc_value = get_lock_obj(lid);
   lc_value->owner_clientid.clear();
   if(lc_value->waiting_clientids.size() == 0){
-    tprintf("lock_server_cache::release 1.1 lid:%llu empty in waiting list, -> LOCKFREE\n", lid);
+    tprintf("lock_server_cache::release 1.1 lid:%llu id:%s  empty in waiting list, -> LOCKFREE\n", lid, id.c_str());
     lc_value->l_state = LOCKFREE;
   }
   else{
-    tprintf("lock_server_cache::release 1.2.1 lid:%llu -> RETRYING\n", lid);
+    tprintf("lock_server_cache::release 1.2.1 lid:%llu id:%s change lock state to RETRYING\n", lid, id.c_str());
     lc_value->l_state = RETRYING;
     client_info c_info;
     c_info.client_id = lc_value->waiting_clientids.front();
@@ -116,9 +115,9 @@ lock_server_cache::release(lock_protocol::lockid_t lid, std::string id,
     lc_value->retrying_clientid = c_info.client_id;
     pthread_mutex_lock(&retry_mutex);
     retry_list.push_back(c_info);
-    tprintf("lock_server_cache::release 1.2.2 lid:%llu move client_id %s from waiting list and add to retry_list\n", lid, c_info.client_id.c_str());
+    tprintf("lock_server_cache::release 1.2.2 lid:%llu id:%s move client_id %s from waiting list and add to retry_list\n", lid, id.c_str(), c_info.client_id.c_str());
     pthread_cond_signal(&retry_cv);
-    tprintf("lock_server_cache::release 1.2.3 lid:%llu signal retry_cv\n", lid);
+    tprintf("lock_server_cache::release 1.2.3 lid:%llu id:%s signal retry_cv\n", lid, id.c_str());
     pthread_mutex_unlock(&retry_mutex);
   }
   pthread_mutex_unlock(&lmap_mutex);
