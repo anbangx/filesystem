@@ -154,7 +154,7 @@ lock_client_cache::retry_handler(lock_protocol::lockid_t lid,
   pthread_mutex_lock(&client_retry_mutex);
   retry_list.push_back(lid);
   pthread_cond_signal(&client_retry_cv);
-  tprintf("lock_client_cache::revoke_handler id:%s add lid:%llu to retry_list and signal client_retry_mutex\n", id.c_str(), lid);
+  tprintf("lock_client_cache::revoke_handler id:%s add lid:%llu to retry_list and signal client_retry_cv\n", id.c_str(), lid);
   pthread_mutex_unlock(&client_retry_mutex);
 
   return ret;
@@ -200,7 +200,7 @@ lock_client_cache::releaser(void) {
           pthread_cond_wait(&lock_cache_obj->client_revoke_cv,
                   &lock_cache_obj->client_lock_mutex);
       }
-      tprintf("lock_client_cache::releaser id:%s 2. calling server release, id: %s\n", id.c_str());
+      tprintf("lock_client_cache::releaser id:%s 2. calling server release\n", id.c_str());
       ret = cl->call(lock_protocol::release, lid, id, r);
       lock_cache_obj->lc_state = NONE;
       pthread_cond_signal(&lock_cache_obj->client_lock_cv);
