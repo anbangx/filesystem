@@ -64,6 +64,7 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
   while(true){
     if(lc_value->lc_state == NONE){
       lc_value->lc_state = ACQUIRING;
+      lc_value->doflush = false;
       ret = cl->call(lock_protocol::acquire, lid, id, r);
       if(ret == lock_protocol::OK){
         tprintf("lock_client_cache::acquire id:%s lid:%llu 1.1 get lock NONE -> LOCKED\n", id.c_str(), lid);
@@ -102,7 +103,7 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
       }
     }
   }
-  lc_value->doflush = false;
+  lc_value->doflush = true;
   pthread_mutex_unlock(&lc_value->client_lock_mutex);
   return ret;
 }
@@ -205,6 +206,10 @@ lock_client_cache::releaser(void) {
                   &lock_cache_obj->client_lock_mutex);
       }
       tprintf("lock_client_cache::releaser id:%s 2. calling server release\n", id.c_str());
+      if(lock_cache_obj->doflush) {
+          tprintf("releaser: state: %d\n", lock_cache_obj->lc_state);
+          lu->dorelease(lid);
+      }
       ret = cl->call(lock_protocol::release, lid, id, r);
       lock_cache_obj->lc_state = NONE;
       pthread_cond_signal(&lock_cache_obj->client_lock_cv);
