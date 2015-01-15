@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
+#include <tprintf.h>
 
 // The calls assume that the caller holds a lock on the extent
 
@@ -20,12 +21,67 @@ extent_client::extent_client(std::string dst)
 }
 
 extent_protocol::status
+extent_client::load(extent_protocol::extentid_t eid) {
+  tprintf("extent cache: load, START");
+  extent_protocol::status ret = extent_protocol::OK;
+  // Get Attributes first
+  extent_protocol::attr attr;
+  ret = cl->call(extent_protocol::getattr, eid, attr);
+  tprintf("extent cache: load, RET");
+  if (ret == extent_protocol::OK) {
+      extent_value *extent_obj;
+      extent_obj = new extent_value();
+      extent_obj->ext_attr.size = attr.size;
+      extent_obj->ext_attr.atime = attr.atime;
+      extent_obj->ext_attr.mtime = attr.mtime;
+      extent_obj->ext_attr.ctime = attr.ctime;
+      extent_obj->dirty = false;
+      tprintf("extent cache: load, get from server for %016llx \n", eid);
+      ret = cl->call(extent_protocol::get, eid, 0, attr.size, extent_obj->data);
+      if (ret != extent_protocol::OK) {
+          tprintf("extent cache: load, server returned error for %016llx \n", eid);
+          delete(extent_obj);
+          return ret;
+      }
+      tprintf("extent cache: load, get from server for %016llx data %s\n", eid,
+              extent_obj->data.c_str());
+      extent_cache[eid] = extent_obj;
+  }
+  return ret;
+}
+
+extent_protocol::status
 extent_client::get(extent_protocol::extentid_t eid, int offset, unsigned int size, std::string &buf)
 {
-  printf("Extent_Client::get - id %016lx, offset %d, size %u\n", eid, offset, size);
+//  extent_protocol::status ret = extent_protocol::OK;
+//  extent_protocol::attr attr;
+//  ret = cl->call(extent_protocol::getattr, eid, attr);
   extent_protocol::status ret = extent_protocol::OK;
-  ret = cl->call(extent_protocol::get, eid, offset, size, buf);
-  printf("Extent_Client::get - id %016lx, return buf: %s\n", eid, buf.c_str());
+  ScopedLock ml(&extcache_mutex);
+  extent_value *extent_obj;
+  while(true) {
+    if (extent_cache.count(eid) > 0) {
+        tprintf("extent_client::get entry present for %016llx returning back! \n", eid);
+        extent_obj = extent_cache[eid];
+        if (offset < 0)
+            buf = extent_obj->data;
+        else if (extent_obj->ext_attr.size < offset)
+            buf = '\0';
+        else
+            buf = extent_obj->data.substr(offset, size);
+
+        extent_obj->ext_attr.atime = time(NULL);
+        extent_cache[eid] = extent_obj;
+        tprintf("extent_client:: from cache get buf:%s\n", buf.c_str());
+        break;
+    }
+    else {
+        tprintf("extent_client::get entry not present for %016llx loading now\n", eid);
+        ret = load(eid);
+        if (ret == extent_protocol::OK) continue;
+        break;
+    }
+  }
   return ret;
 }
 
@@ -33,17 +89,68 @@ extent_protocol::status
 extent_client::getattr(extent_protocol::extentid_t eid, extent_protocol::attr &attr)
 {
   extent_protocol::status ret = extent_protocol::OK;
-  ret = cl->call(extent_protocol::getattr, eid, attr);
+  ScopedLock ml(&extcache_mutex);
+  //extent_value *extent_obj;
+  while(true) {
+    if (extent_cache.count(eid) > 0) {
+        //extent_obj = extent_store[eid];
+        attr = extent_cache[eid]->ext_attr;
+        return extent_protocol::OK;
+    }
+    else {
+        tprintf("extent_client::getattr entry not present for %016llx loading now\n", eid);
+        ret = load(eid);
+        if (ret == extent_protocol::OK) continue;
+        break;
+    }
+  }
   return ret;
 }
 
 extent_protocol::status
 extent_client::put(extent_protocol::extentid_t eid, int offset, std::string buf)
 {
-  printf("Extent_Client::put - id %d enter, buf: %s\n", eid, buf.c_str());
   extent_protocol::status ret = extent_protocol::OK;
-  int r;
-  ret = cl->call(extent_protocol::put, eid, offset, buf, r);
+  ScopedLock ml(&extcache_mutex);
+  extent_value *extent_obj;
+  while(true) {
+    if (extent_cache.count(eid) > 0) {
+        extent_obj = extent_cache[eid];
+        if (offset < 0)
+            extent_obj->data = buf;
+        else {
+            if (offset > extent_obj->ext_attr.size) {
+                extent_obj->data.resize(offset);
+                extent_obj->data.append(buf);
+            }
+            else if (buf != "")
+                extent_obj->data.replace(offset, buf.size(), buf);
+            else
+                extent_obj->data.resize(offset);
+        }
+        extent_obj->ext_attr.mtime = extent_obj->ext_attr.ctime = time(NULL);
+        extent_obj->ext_attr.size = extent_obj->data.size();
+        extent_obj->dirty = true;
+        extent_cache[eid] = extent_obj;
+        tprintf("extent_client::put, extent_store: eid %016llx, buf %s\n", eid, buf.c_str());
+        return extent_protocol::OK;
+    }
+    else {
+        tprintf("extent_client::put entry not present for %016llx loading now\n", eid);
+        ret = load(eid);
+        if (ret == extent_protocol::OK) continue;
+        else {
+            //int r;
+            //ret = cl->call(extent_protocol::put, eid, off, buf, r);
+            //ret = load(eid);
+            extent_obj = new extent_value();
+            extent_cache[eid] = extent_obj;
+            tprintf("extent_client::put entry not present for %016llx local put\n", eid);
+            continue;
+        }
+        break;
+    }
+  }
   return ret;
 }
 
@@ -51,8 +158,13 @@ extent_protocol::status
 extent_client::remove(extent_protocol::extentid_t eid)
 {
   extent_protocol::status ret = extent_protocol::OK;
-  int r;
-  ret = cl->call(extent_protocol::remove, eid, r);
+  ScopedLock ml(&extcache_mutex);
+  tprintf("Removing file for %016llx \n", eid);
+  delete(extent_cache[eid]);
+  extent_cache.erase(eid);
+//  extent_protocol::status ret = extent_protocol::OK;
+//  int r;
+//  ret = cl->call(extent_protocol::remove, eid, r);
   return ret;
 }
 
