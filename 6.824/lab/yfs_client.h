@@ -9,8 +9,18 @@
 #include "lock_protocol.h"
 #include "lock_client_cache.h"
 
+class lock_release_impl : public lock_release_user {
+    private:
+      class extent_client *ec;
+    public:
+      lock_release_impl(extent_client *ec);
+      virtual ~lock_release_impl() {};
+      void dorelease(lock_protocol::lockid_t lid);
+};
+
 class yfs_client {
   extent_client *ec;
+  lock_release_impl *lu;
   lock_client_cache *lc;
  public:
 

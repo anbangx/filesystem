@@ -11,11 +11,20 @@
 #include <fcntl.h>
 #include <stdlib.h>
 
+lock_release_impl::lock_release_impl(extent_client *ec) {
+    this->ec = ec;
+}
+
+void
+lock_release_impl::dorelease(lock_protocol::lockid_t lid) {
+    ec->flush(lid);
+}
 
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-  lc = new lock_client_cache(lock_dst);
+  lu = new lock_release_impl(ec);
+  lc = new lock_client_cache(lock_dst, lu);
   createroot();
 }
 

@@ -51,6 +51,30 @@ extent_client::load(extent_protocol::extentid_t eid) {
 }
 
 extent_protocol::status
+extent_client::flush(extent_protocol::extentid_t eid)
+{
+    extent_protocol::status ret = extent_protocol::OK;
+    int r;
+    ScopedLock ml(&extcache_mutex);
+    tprintf("extent_client:flush for %016llx \n", eid);
+    extent_value *extent_obj;
+    if (extent_cache.count(eid) > 0) {
+        extent_obj = extent_cache[eid];
+        if (extent_obj->dirty) {
+            tprintf("flush:Calling put for %016llx with value %s\n", eid, extent_obj->data.c_str());
+            ret = cl->call(extent_protocol::put, eid, -1, extent_obj->data, r);
+        }
+        tprintf("flush: not dirty, so just deleting in local\n");
+        delete(extent_cache[eid]);
+        extent_cache.erase(eid);
+    } else {
+        tprintf("flush: not in extent cache, calling remove for %016llx\n", eid);
+        ret = cl->call(extent_protocol::remove, eid, r);
+    }
+    return ret;
+}
+
+extent_protocol::status
 extent_client::get(extent_protocol::extentid_t eid, int offset, unsigned int size, std::string &buf)
 {
 //  extent_protocol::status ret = extent_protocol::OK;
