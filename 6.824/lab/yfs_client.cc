@@ -259,7 +259,7 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
   if(!isfile)
     file_buf.append('/' + filename(file_inum) + "/" + name);
   // Create an empty extent for ino
-  lc->acquire(p_inum);
+  lc->acquire(file_inum);
   childlock = true;
   if (ec->put(file_inum, -1, file_buf) != extent_protocol::OK) {
      r = IOERR;
@@ -276,7 +276,7 @@ yfs_client::createfile(inum p_inum, const char *name, inum &c_inum, bool isfile)
   release:
     lc->release(p_inum);
     if(childlock)
-      lc->release(p_inum);
+      lc->release(file_inum);
   return r;
 }
 
