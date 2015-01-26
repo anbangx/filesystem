@@ -5,6 +5,7 @@
 #include <inc/error.h>
 #include <inc/string.h>
 #include <inc/assert.h>
+#include <inc/memlayout.h>
 
 #include <kern/pmap.h>
 #include <kern/kclock.h>
@@ -156,8 +157,8 @@ mem_init(void)
 	// array.  'npages' is the number of physical pages in memory.  Use memset
 	// to initialize all fields of each struct PageInfo to 0.
 	// Your code goes here:
-	pages = (struct Page *) boot_alloc(sizeof(struct Page) * npages);
-	memset(pages, 0, sizeof(struct Page) * npages);
+	pages = (struct PageInfo *)boot_alloc(sizeof(struct PageInfo) * npages);
+	memset(pages, 0, sizeof(struct PageInfo) * npages);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -181,6 +182,7 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
+	boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -193,6 +195,7 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
+	boot_map_region(kern_pgdir, UENVS, PTSIZE, PADDR(envs), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -382,8 +385,34 @@ page_decref(struct PageInfo* pp)
 pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
-	// Fill this function in
-	return NULL;
+	pde_t *pde;
+	pte_t *pgtab;
+	struct PageInfo *pp;
+
+	pde = &pgdir[PDX(va)];
+	if (*pde & PTE_P) {
+		// KADDR(pa) : get the corresponding va of this pa.
+		// ( reversed va->pa mapping )
+		// understanding why we need KADDR and PADDR is very important :
+		// note :
+		// 1. dereference, uintptr_t, physaddr_t
+		// 2. the kernel, like any other software, cannot bypass virtual
+		// memory translation and thus cannot directly load and store
+		// to physical addresses.
+		// 3. the kernel has set up some page table that has the direct
+		// mapping of va -> pa.
+		// 4. all pointers in c are virtual address.
+		// read this :
+		// http://pdos.csail.mit.edu/6.828/2012/labs/lab2/#Virtual--Linear--and-Physical-Addresses
+		pgtab = (pte_t*)KADDR(PTE_ADDR(*pde));
+	} else {
+		if (!create || (pp = page_alloc(ALLOC_ZERO)) == 0)
+			return 0;
+		pp->pp_ref = 1;
+		pgtab = (pte_t*)KADDR(page2pa(pp));
+		*pde = PADDR(pgtab) | PTE_P | PTE_W | PTE_U;
+	}
+	return &pgtab[PTX(va)];
 }
 
 //
@@ -401,6 +430,17 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
+	pte_t * pte;
+	for (; size > 0 ; size -= PGSIZE) {
+		pte = pgdir_walk(pgdir, (void *)va, 1);
+		if (pte == 0)
+			panic("boot_map_region : pgdir_walk returns 0.\n");
+		if (*pte & PTE_P )
+			panic("boot_map_region : pte has already presents.\n");
+		*pte = pa | perm | PTE_P;
+		va += PGSIZE;
+		pa += PGSIZE;
+	}
 }
 
 //
@@ -432,6 +472,19 @@ int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
+	pte_t * pte;
+	pte = pgdir_walk(pgdir, va, 1);
+	if (!pte)
+		return -E_NO_MEM;
+	// add referance count first ,and then remove, solving the re-inserte
+	// problem.
+	(pp-> pp_ref) ++;
+	if (*pte & PTE_P )
+		page_remove(pgdir, va);
+
+	*pte = page2pa(pp) | perm | PTE_P;
+	tlb_invalidate(pgdir, va);
+
 	return 0;
 }
 
@@ -450,7 +503,14 @@ struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
-	return NULL;
+	pte_t * pte;
+	pte = pgdir_walk(pgdir, va, 0);
+	if (!pte || !(*pte & PTE_P))
+		return NULL;
+	if (pte_store)
+		*pte_store = pte;
+
+	return pa2page(PTE_ADDR(*pte));
 }
 
 //
@@ -472,6 +532,20 @@ void
 page_remove(pde_t *pgdir, void *va)
 {
 	// Fill this function in
+	struct PageInfo * pp;
+	pte_t * pte;
+	pp = page_lookup(pgdir, va, &pte);
+	if (!pp)
+		return;
+
+	// descrease ref count and free physical page
+	page_decref(pp);
+
+	// update page table entry
+	*pte = 0;
+
+	// tlb things
+	tlb_invalidate(pgdir, va);
 }
 
 //
